@@ -1,9 +1,15 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+export interface ThemeColors {
+  primary: string;
+  accent: string;
+}
+
 export interface UserPreferences {
   userId: string;
   userLink?: string;
+  theme?: ThemeColors;
   [key: string]: any;
 }
 

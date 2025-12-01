@@ -6,29 +6,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { trackThemeChanged } from "@/lib/analytics";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Theme = () => {
   const navigate = useNavigate();
-  const [primaryColor, setPrimaryColor] = useState("#F4A69F");
-  const [accentColor, setAccentColor] = useState("#F5DDA9");
+  const { theme, updateTheme, applyTheme } = useTheme();
+  const [primaryColor, setPrimaryColor] = useState(theme.primary);
+  const [accentColor, setAccentColor] = useState(theme.accent);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("customTheme");
-    if (savedTheme) {
-      const theme = JSON.parse(savedTheme);
-      setPrimaryColor(theme.primary);
-      setAccentColor(theme.accent);
-    }
-  }, []);
+    setPrimaryColor(theme.primary);
+    setAccentColor(theme.accent);
+  }, [theme]);
 
-  const handleSave = () => {
-    const theme = {
-      primary: primaryColor,
-      accent: accentColor,
-    };
-    localStorage.setItem("customTheme", JSON.stringify(theme));
-    trackThemeChanged("custom");
-    toast.success("Tema personalizado salvo!");
+  const handleSave = async () => {
+    try {
+      await updateTheme({
+        primary: primaryColor,
+        accent: accentColor,
+      });
+      trackThemeChanged("custom");
+      toast.success("Tema personalizado salvo!");
+    } catch (error) {
+      toast.error("Erro ao salvar tema");
+    }
   };
 
   const presetThemes = [
@@ -38,10 +39,19 @@ const Theme = () => {
     { name: "Ocean Blue", primary: "#7DD3FC", accent: "#A5F3FC" },
   ];
 
-  const applyPreset = (preset: typeof presetThemes[0]) => {
+  const applyPreset = async (preset: typeof presetThemes[0]) => {
     setPrimaryColor(preset.primary);
     setAccentColor(preset.accent);
-    trackThemeChanged("preset");
+    try {
+      await updateTheme({
+        primary: preset.primary,
+        accent: preset.accent,
+      });
+      trackThemeChanged("preset");
+      toast.success("Tema aplicado com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao aplicar tema");
+    }
   };
 
   return (
