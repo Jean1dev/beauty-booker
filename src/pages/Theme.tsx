@@ -12,19 +12,13 @@ const Theme = () => {
   const [accentColor, setAccentColor] = useState("#F5DDA9");
 
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      navigate("/");
-      return;
-    }
-
     const savedTheme = localStorage.getItem("customTheme");
     if (savedTheme) {
       const theme = JSON.parse(savedTheme);
       setPrimaryColor(theme.primary);
       setAccentColor(theme.accent);
     }
-  }, [navigate]);
+  }, []);
 
   const handleSave = () => {
     const theme = {

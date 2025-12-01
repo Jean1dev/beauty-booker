@@ -45,17 +45,11 @@ const Services = () => {
   });
 
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      navigate("/");
-      return;
-    }
-
     const savedServices = localStorage.getItem("services");
     if (savedServices) {
       setServices(JSON.parse(savedServices));
     }
-  }, [navigate]);
+  }, []);
 
   const saveServices = (updatedServices: Service[]) => {
     localStorage.setItem("services", JSON.stringify(updatedServices));

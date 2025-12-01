@@ -1,22 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
+  const handleLogout = async () => {
+    try {
+      await logout();
       navigate("/");
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
     }
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    navigate("/");
   };
 
   const menuItems = [

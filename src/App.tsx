@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PublicRoute } from "@/components/PublicRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Services from "./pages/Services";
@@ -21,12 +23,54 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/availability" element={<Availability />} />
-          <Route path="/appointments" element={<Appointments />} />
-          <Route path="/theme" element={<Theme />} />
+          <Route
+            path="/"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/services"
+            element={
+              <ProtectedRoute>
+                <Services />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/availability"
+            element={
+              <ProtectedRoute>
+                <Availability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute>
+                <Appointments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/theme"
+            element={
+              <ProtectedRoute>
+                <Theme />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/book/preview" element={<BookingPublic />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

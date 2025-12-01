@@ -28,17 +28,11 @@ const Availability = () => {
   ]);
 
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      navigate("/");
-      return;
-    }
-
     const savedSchedule = localStorage.getItem("availability");
     if (savedSchedule) {
       setSchedule(JSON.parse(savedSchedule));
     }
-  }, [navigate]);
+  }, []);
 
   const handleToggleDay = (index: number) => {
     const updated = [...schedule];

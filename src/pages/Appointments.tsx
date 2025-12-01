@@ -1,18 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 import { ArrowLeft, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Appointments = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      navigate("/");
-    }
-  }, [navigate]);
 
   return (
     <div className="min-h-screen p-4 md:p-8 animate-fade-in">
