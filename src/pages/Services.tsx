@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Pencil, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,19 +21,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-interface Service {
-  id: string;
-  name: string;
-  color: string;
-  duration: number;
-  durationUnit: "min" | "hour";
-  advanceDays: number;
-}
+import { trackServiceCreated, trackServiceUpdated, trackServiceDeleted } from "@/lib/analytics";
+import { useAuth } from "@/hooks/use-auth";
+import { useUserServices } from "@/hooks/use-user-services";
+import { Service } from "@/services/user-services";
 
 const Services = () => {
   const navigate = useNavigate();
-  const [services, setServices] = useState<Service[]>([]);
+  const { userData } = useAuth();
+  const { services, isLoading, createService, updateService, removeService } = useUserServices({
+    userId: userData?.uid || null,
+  });
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState({
@@ -44,25 +43,7 @@ const Services = () => {
     advanceDays: 1,
   });
 
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      navigate("/");
-      return;
-    }
-
-    const savedServices = localStorage.getItem("services");
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
-    }
-  }, [navigate]);
-
-  const saveServices = (updatedServices: Service[]) => {
-    localStorage.setItem("services", JSON.stringify(updatedServices));
-    setServices(updatedServices);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim()) {
@@ -70,22 +51,23 @@ const Services = () => {
       return;
     }
 
-    if (editingService) {
-      const updated = services.map((s) =>
-        s.id === editingService.id ? { ...formData, id: s.id } : s
-      );
-      saveServices(updated);
-      toast.success("Serviço atualizado com sucesso!");
-    } else {
-      const newService: Service = {
-        ...formData,
-        id: Date.now().toString(),
-      };
-      saveServices([...services, newService]);
-      toast.success("Serviço criado com sucesso!");
+    try {
+      if (editingService) {
+        await updateService({
+          ...formData,
+          id: editingService.id,
+        });
+        trackServiceUpdated(formData.name);
+        toast.success("Serviço atualizado com sucesso!");
+      } else {
+        const newService = await createService(formData);
+        trackServiceCreated(newService.name);
+        toast.success("Serviço criado com sucesso!");
+      }
+      resetForm();
+    } catch (error) {
+      toast.error("Erro ao salvar serviço");
     }
-
-    resetForm();
   };
 
   const handleEdit = (service: Service) => {
@@ -94,10 +76,17 @@ const Services = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = services.filter((s) => s.id !== id);
-    saveServices(updated);
-    toast.success("Serviço excluído com sucesso!");
+  const handleDelete = async (id: string) => {
+    const service = services.find((s) => s.id === id);
+    if (!service) return;
+
+    try {
+      await removeService(id);
+      trackServiceDeleted(service.name);
+      toast.success("Serviço excluído com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao excluir serviço");
+    }
   };
 
   const resetForm = () => {
@@ -142,7 +131,14 @@ const Services = () => {
         </div>
 
         {/* Services Grid */}
-        {services.length === 0 ? (
+        {isLoading ? (
+          <Card className="shadow-medium">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Sparkles className="w-16 h-16 text-muted-foreground/50 mb-4 animate-pulse" />
+              <p className="text-muted-foreground">Carregando serviços...</p>
+            </CardContent>
+          </Card>
+        ) : services.length === 0 ? (
           <Card className="shadow-medium">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Sparkles className="w-16 h-16 text-muted-foreground/50 mb-4" />

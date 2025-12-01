@@ -1,38 +1,83 @@
-import { useState, useEffect } from "react";
-import { Calendar, Clock, User, Phone, MessageSquare, ChevronRight, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState, useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { Sparkles, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-
-interface Service {
-  id: string;
-  name: string;
-  color: string;
-  duration: number;
-  durationUnit: "min" | "hour";
-}
+import { useBookingData } from "@/hooks/use-booking-data";
+import { Service } from "@/services/user-services";
+import { processAvailability, AvailableSlot } from "@/services/availability-processor";
+import { addDays, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { createAppointment } from "@/services/appointments";
+import { Timestamp } from "firebase/firestore";
+import { BookingHeader } from "@/components/booking/BookingHeader";
+import { ProgressIndicator } from "@/components/booking/ProgressIndicator";
+import { ServiceSelectionStep } from "@/components/booking/ServiceSelectionStep";
+import { DateTimeSelectionStep } from "@/components/booking/DateTimeSelectionStep";
+import { ConfirmationStep } from "@/components/booking/ConfirmationStep";
+import { SuccessStep } from "@/components/booking/SuccessStep";
 
 const BookingPublic = () => {
+  const { userLink } = useParams<{ userLink: string }>();
+  const { services, availability, userId, bookedSlots, isLoading, error } = useBookingData({ userLink: userLink || null });
+  
   const [step, setStep] = useState(1);
-  const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     notes: "",
   });
 
-  useEffect(() => {
-    const savedServices = localStorage.getItem("services");
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
+  const processedAvailability = useMemo(() => {
+    if (!selectedService || !availability) {
+      return null;
     }
-  }, []);
+
+    const startDate = new Date();
+    const endDate = addDays(new Date(), 30);
+    
+    return processAvailability(availability, selectedService, startDate, endDate, bookedSlots);
+  }, [selectedService, availability, bookedSlots]);
+
+  const availableDates = useMemo(() => {
+    if (!processedAvailability) {
+      return [];
+    }
+
+    const datesMap = new Map<string, AvailableSlot[]>();
+    
+    processedAvailability.availableSlots.forEach((slot) => {
+      if (!datesMap.has(slot.date)) {
+        datesMap.set(slot.date, []);
+      }
+      datesMap.get(slot.date)!.push(slot);
+    });
+
+    return Array.from(datesMap.entries())
+      .map(([date, slots]) => ({
+        date,
+        label: format(parseISO(date), "EEE, d MMM", { locale: ptBR }),
+        slots,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [processedAvailability]);
+
+  const availableTimesForDate = useMemo(() => {
+    if (!selectedDate || !processedAvailability) {
+      return [];
+    }
+
+    const dateSlots = processedAvailability.availableSlots.filter(
+      (slot) => slot.date === selectedDate
+    );
+
+    return dateSlots.map((slot) => slot.time).sort();
+  }, [selectedDate, processedAvailability]);
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -45,7 +90,20 @@ const BookingPublic = () => {
     setStep(3);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDateSelect = (date: string) => {
+    setSelectedDate(date);
+    setSelectedTime("");
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleNewBooking = () => {
+    window.location.reload();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.phone.trim()) {
@@ -53,253 +111,148 @@ const BookingPublic = () => {
       return;
     }
 
-    toast.success("Agendamento confirmado! Em breve você receberá a confirmação.");
-    
-    // Reset form
-    setTimeout(() => {
-      setStep(1);
-      setSelectedService(null);
-      setSelectedDate("");
-      setSelectedTime("");
-      setFormData({ name: "", phone: "", notes: "" });
-    }, 2000);
+    if (!selectedService || !selectedDate || !selectedTime || !userId) {
+      toast.error("Dados incompletos. Por favor, tente novamente.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const dateTime = parseISO(`${selectedDate}T${selectedTime}`);
+      const timestamp = Timestamp.fromDate(dateTime);
+
+      const appointmentData: any = {
+        userId,
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        clientName: formData.name.trim(),
+        clientPhone: formData.phone.trim(),
+        date: selectedDate,
+        time: selectedTime,
+        dateTime: timestamp,
+        duration: selectedService.duration,
+        durationUnit: selectedService.durationUnit,
+        status: "pending",
+      };
+
+      if (formData.notes.trim()) {
+        appointmentData.clientNotes = formData.notes.trim();
+      }
+
+      await createAppointment(appointmentData);
+
+      setIsSuccess(true);
+      toast.success("Agendamento confirmado! Em breve você receberá a confirmação.");
+    } catch (error: any) {
+      console.error("Erro ao criar agendamento:", error);
+      toast.error(error.message || "Erro ao confirmar agendamento. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getDurationText = (duration: number, unit: "min" | "hour") => {
     return unit === "min" ? `${duration} min` : `${duration}h`;
   };
 
-  // Mock available times
-  const availableTimes = [
-    "08:00", "09:00", "10:00", "11:00", 
-    "14:00", "15:00", "16:00", "17:00"
-  ];
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary shadow-medium mb-4 animate-pulse">
+            <Sparkles className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <p className="text-muted-foreground">Carregando serviços...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const availableDates = [
-    { date: "2025-12-15", label: "Seg, 15 Dez" },
-    { date: "2025-12-16", label: "Ter, 16 Dez" },
-    { date: "2025-12-17", label: "Qua, 17 Dez" },
-    { date: "2025-12-18", label: "Qui, 18 Dez" },
-    { date: "2025-12-19", label: "Sex, 19 Dez" },
-  ];
+  if (error || !userLink) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full shadow-medium">
+          <CardContent className="pt-6 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-destructive/10 mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Link não encontrado</h2>
+            <p className="text-muted-foreground">
+              O link de agendamento não foi encontrado ou não é válido.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (services.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full shadow-medium">
+          <CardContent className="pt-6 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mb-4">
+              <Sparkles className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Nenhum serviço disponível</h2>
+            <p className="text-muted-foreground">
+              Este profissional ainda não possui serviços cadastrados.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8 animate-fade-in">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-primary shadow-medium mb-2">
-            <Sparkles className="w-7 h-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Agende seu Horário
-          </h1>
-          <p className="text-muted-foreground">
-            Escolha o serviço e o melhor horário para você
-          </p>
-        </div>
+        <BookingHeader />
+        <ProgressIndicator currentStep={step} />
 
-        {/* Progress Indicator */}
-        <div className="flex items-center justify-center gap-2 md:gap-4">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-all ${
-                  step >= s
-                    ? "gradient-primary text-primary-foreground shadow-soft"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {s}
-              </div>
-              {s < 3 && (
-                <ChevronRight className={step > s ? "text-primary" : "text-muted-foreground"} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Step 1: Choose Service */}
         {step === 1 && (
-          <Card className="shadow-medium animate-slide-up">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Escolha um Serviço
-              </CardTitle>
-              <CardDescription>
-                Selecione o serviço que deseja agendar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {services.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum serviço disponível no momento
-                </p>
-              ) : (
-                services.map((service) => (
-                  <button
-                    key={service.id}
-                    onClick={() => handleServiceSelect(service)}
-                    className="w-full p-4 rounded-xl border border-border hover:border-primary/50 bg-card hover:bg-secondary/50 transition-all text-left shadow-soft hover:shadow-medium group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: service.color }}
-                        />
-                        <div>
-                          <h3 className="font-semibold group-hover:text-primary transition-colors">
-                            {service.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Duração: {getDurationText(service.duration, service.durationUnit)}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                  </button>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <ServiceSelectionStep
+            services={services}
+            onSelect={handleServiceSelect}
+            getDurationText={getDurationText}
+          />
         )}
 
-        {/* Step 2: Choose Date & Time */}
         {step === 2 && selectedService && (
-          <Card className="shadow-medium animate-slide-up">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                Escolha Data e Horário
-              </CardTitle>
-              <CardDescription>
-                Serviço: {selectedService.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Dates */}
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold">Selecione uma data</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {availableDates.map((d) => (
-                    <Button
-                      key={d.date}
-                      variant={selectedDate === d.date ? "default" : "outline"}
-                      onClick={() => setSelectedDate(d.date)}
-                      className={selectedDate === d.date ? "gradient-primary" : ""}
-                    >
-                      {d.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Times */}
-              {selectedDate && (
-                <div className="space-y-3 animate-slide-up">
-                  <Label className="text-sm font-semibold">Selecione um horário</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {availableTimes.map((time) => (
-                      <Button
-                        key={time}
-                        variant="outline"
-                        onClick={() => handleTimeSelect(selectedDate, time)}
-                        className="hover:gradient-primary hover:text-primary-foreground transition-all"
-                      >
-                        {time}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Button
-                variant="outline"
-                onClick={() => setStep(1)}
-                className="w-full"
-              >
-                Voltar
-              </Button>
-            </CardContent>
-          </Card>
+          <DateTimeSelectionStep
+            selectedService={selectedService}
+            availableDates={availableDates}
+            selectedDate={selectedDate}
+            availableTimesForDate={availableTimesForDate}
+            selectedTime={selectedTime}
+            onDateSelect={handleDateSelect}
+            onTimeSelect={handleTimeSelect}
+            onBack={() => setStep(1)}
+          />
         )}
 
-        {/* Step 3: Confirm Details */}
-        {step === 3 && (
-          <Card className="shadow-medium animate-slide-up">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5 text-primary" />
-                Confirme seus Dados
-              </CardTitle>
-              <CardDescription>
-                {selectedService?.name} • {selectedDate} às {selectedTime}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    <User className="w-4 h-4 inline mr-1" />
-                    Nome Completo *
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Seu nome"
-                    required
-                  />
-                </div>
+        {step === 3 && !isSuccess && (
+          <ConfirmationStep
+            selectedService={selectedService}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            formData={formData}
+            isSubmitting={isSubmitting}
+            onFormChange={handleFormChange}
+            onSubmit={handleSubmit}
+            onBack={() => setStep(2)}
+          />
+        )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">
-                    <Phone className="w-4 h-4 inline mr-1" />
-                    Telefone *
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">
-                    <MessageSquare className="w-4 h-4 inline mr-1" />
-                    Observações (opcional)
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Alguma observação importante?"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(2)}
-                    className="flex-1"
-                  >
-                    Voltar
-                  </Button>
-                  <Button type="submit" className="flex-1 gradient-primary shadow-soft">
-                    Confirmar Agendamento
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+        {step === 3 && isSuccess && (
+          <SuccessStep
+            selectedService={selectedService}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            clientName={formData.name}
+            onNewBooking={handleNewBooking}
+          />
         )}
       </div>
     </div>
