@@ -4,6 +4,9 @@ service cloud.firestore {
     match /user-preferences/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    match /availability/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 

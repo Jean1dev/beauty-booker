@@ -1,55 +1,66 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { trackAvailabilitySaved } from "@/lib/analytics";
-
-interface DaySchedule {
-  day: string;
-  enabled: boolean;
-  start: string;
-  end: string;
-}
+import { useAuth } from "@/hooks/use-auth";
+import { useAvailability } from "@/hooks/use-availability";
+import { DaySchedule, HolidayConfig } from "@/services/availability";
+import { getHolidaysForCurrentAndNextYear } from "@/services/holidays";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Availability = () => {
   const navigate = useNavigate();
-  const [schedule, setSchedule] = useState<DaySchedule[]>([
-    { day: "Segunda-feira", enabled: true, start: "08:00", end: "18:00" },
-    { day: "Terça-feira", enabled: true, start: "08:00", end: "18:00" },
-    { day: "Quarta-feira", enabled: true, start: "08:00", end: "18:00" },
-    { day: "Quinta-feira", enabled: true, start: "08:00", end: "18:00" },
-    { day: "Sexta-feira", enabled: true, start: "08:00", end: "18:00" },
-    { day: "Sábado", enabled: false, start: "09:00", end: "14:00" },
-    { day: "Domingo", enabled: false, start: "09:00", end: "14:00" },
-  ]);
+  const { userData } = useAuth();
+  const {
+    schedule,
+    holidays,
+    holidaysEnabled,
+    holidaysCountry,
+    isLoading,
+    updateSchedule,
+    updateHolidays,
+    setHolidaysEnabled,
+    setHolidaysCountry,
+  } = useAvailability({
+    userId: userData?.uid || null,
+  });
+  
+  const [localSchedule, setLocalSchedule] = useState<DaySchedule[]>(schedule);
+  const [localHolidays, setLocalHolidays] = useState<HolidayConfig[]>(holidays);
+  const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
 
   useEffect(() => {
-    const savedSchedule = localStorage.getItem("availability");
-    if (savedSchedule) {
-      setSchedule(JSON.parse(savedSchedule));
+    if (schedule.length > 0) {
+      setLocalSchedule(schedule);
     }
-  }, []);
+  }, [schedule]);
+
+  useEffect(() => {
+    setLocalHolidays(holidays);
+  }, [holidays]);
 
   const handleToggleDay = (index: number) => {
-    const updated = [...schedule];
+    const updated = [...localSchedule];
     updated[index].enabled = !updated[index].enabled;
-    setSchedule(updated);
+    setLocalSchedule(updated);
   };
 
   const handleTimeChange = (index: number, field: "start" | "end", value: string) => {
-    const updated = [...schedule];
+    const updated = [...localSchedule];
     updated[index][field] = value;
-    setSchedule(updated);
+    setLocalSchedule(updated);
   };
 
-  const handleSave = () => {
-    // Validate times
-    for (const day of schedule) {
+  const handleSave = async () => {
+    for (const day of localSchedule) {
       if (day.enabled) {
         if (!day.start || !day.end) {
           toast.error(`Preencha os horários de ${day.day}`);
@@ -62,9 +73,67 @@ const Availability = () => {
       }
     }
 
-    localStorage.setItem("availability", JSON.stringify(schedule));
-    trackAvailabilitySaved();
-    toast.success("Disponibilidade salva com sucesso!");
+    try {
+      await updateSchedule(localSchedule);
+      if (holidaysEnabled) {
+        await updateHolidays(localHolidays, holidaysEnabled, holidaysCountry);
+      }
+      trackAvailabilitySaved();
+      toast.success("Disponibilidade salva com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao salvar disponibilidade");
+    }
+  };
+
+  const handleToggleHoliday = (index: number) => {
+    const updated = [...localHolidays];
+    updated[index].enabled = !updated[index].enabled;
+    setLocalHolidays(updated);
+  };
+
+  const handleToggleHolidaysEnabled = async (enabled: boolean) => {
+    try {
+      if (enabled && localHolidays.length === 0) {
+        setIsLoadingHolidays(true);
+        try {
+          const apiHolidays = await getHolidaysForCurrentAndNextYear();
+          const holidayConfigs: HolidayConfig[] = apiHolidays.map((holiday) => ({
+            date: holiday.date,
+            name: holiday.name,
+            enabled: true,
+          }));
+          setLocalHolidays(holidayConfigs);
+          await updateHolidays(holidayConfigs, enabled, holidaysCountry);
+        } catch (error) {
+          console.error("Erro ao carregar feriados:", error);
+          toast.error("Erro ao carregar feriados");
+        } finally {
+          setIsLoadingHolidays(false);
+        }
+      } else {
+        await updateHolidays(localHolidays, enabled, holidaysCountry);
+      }
+      setHolidaysEnabled(enabled);
+    } catch (error) {
+      console.error("Erro ao atualizar feriados:", error);
+      toast.error("Erro ao atualizar configuração de feriados");
+    }
+  };
+
+  const getNextOccurrence = (dateString: string): string => {
+    try {
+      const date = parseISO(dateString);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const holidayYear = date.getFullYear();
+      
+      if (holidayYear >= currentYear) {
+        return format(date, "d MMM yyyy", { locale: ptBR });
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
   };
 
   return (
@@ -102,7 +171,12 @@ const Availability = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            {schedule.map((day, index) => (
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Carregando disponibilidade...
+              </div>
+            ) : (
+              localSchedule.map((day, index) => (
               <div
                 key={day.day}
                 className={`p-4 rounded-xl border transition-all ${
@@ -153,15 +227,93 @@ const Availability = () => {
                   )}
                 </div>
               </div>
-            ))}
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-medium">
+          <CardHeader className="gradient-primary text-primary-foreground rounded-t-2xl">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Feriados
+            </CardTitle>
+            <CardDescription className="text-primary-foreground/80">
+              O sistema marcará você como indisponível nos feriados selecionados
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-between gap-4 pb-4 border-b">
+              <div className="flex items-center gap-3 flex-1">
+                <Label htmlFor="country-select" className="text-sm font-medium">
+                  País para feriados
+                </Label>
+                <Select
+                  value={holidaysCountry}
+                  onValueChange={(value) => setHolidaysCountry(value)}
+                  disabled={!holidaysEnabled}
+                >
+                  <SelectTrigger id="country-select" className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Brasil">Brasil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={holidaysEnabled}
+                  onCheckedChange={handleToggleHolidaysEnabled}
+                />
+                <Label htmlFor="holidays-toggle" className="text-sm font-medium cursor-pointer">
+                  Ativar feriados
+                </Label>
+              </div>
+            </div>
+
+            {isLoadingHolidays ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Carregando feriados...
+              </div>
+            ) : holidaysEnabled && localHolidays.length > 0 ? (
+              <div className="space-y-2">
+                {localHolidays.map((holiday, index) => (
+                  <div
+                    key={`${holiday.date}-${index}`}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-secondary/30"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{holiday.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Próximo: {getNextOccurrence(holiday.date)}
+                      </div>
+                    </div>
+                    <Switch
+                      checked={holiday.enabled}
+                      onCheckedChange={() => handleToggleHoliday(index)}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : holidaysEnabled ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum feriado encontrado
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Ative os feriados para começar
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Button
           onClick={handleSave}
-          className="w-full gradient-primary shadow-medium hover:opacity-90 transition-smooth h-12 text-base"
+          disabled={isLoading || isLoadingHolidays}
+          className="w-full gradient-primary shadow-medium hover:opacity-90 transition-smooth h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Salvar Disponibilidade
+          {isLoading || isLoadingHolidays ? "Salvando..." : "Salvar Disponibilidade"}
         </Button>
       </div>
     </div>
