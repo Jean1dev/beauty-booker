@@ -75,7 +75,7 @@ const App = () => (
               </ProtectedRoute>
             }
           />
-          <Route path="/book/preview" element={<BookingPublic />} />
+          <Route path="/book/:userLink" element={<BookingPublic />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
