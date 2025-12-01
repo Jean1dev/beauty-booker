@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { trackAvailabilitySaved } from "@/lib/analytics";
 
 interface DaySchedule {
   day: string;
@@ -62,6 +63,7 @@ const Availability = () => {
     }
 
     localStorage.setItem("availability", JSON.stringify(schedule));
+    trackAvailabilitySaved();
     toast.success("Disponibilidade salva com sucesso!");
   };
 

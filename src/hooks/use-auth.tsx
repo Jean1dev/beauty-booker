@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { User, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 import { toast } from "sonner";
+import { trackLogin, trackLogout, setUserAnalytics, clearUserAnalytics } from "@/lib/analytics";
 
 interface UserData {
   uid: string;
@@ -29,11 +30,16 @@ export const useAuth = () => {
         setUserData(data);
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("user", JSON.stringify(data));
+        setUserAnalytics(firebaseUser.uid, {
+          email: firebaseUser.email || undefined,
+          display_name: firebaseUser.displayName || undefined,
+        });
       } else {
         setUser(null);
         setUserData(null);
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("user");
+        clearUserAnalytics();
       }
       setIsCheckingAuth(false);
     });
@@ -59,6 +65,12 @@ export const useAuth = () => {
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("user", JSON.stringify(data));
       
+      trackLogin("google");
+      setUserAnalytics(firebaseUser.uid, {
+        email: firebaseUser.email || undefined,
+        display_name: firebaseUser.displayName || undefined,
+      });
+      
       toast.success("Login realizado com sucesso!");
       return firebaseUser;
     } catch (error: any) {
@@ -78,6 +90,8 @@ export const useAuth = () => {
       setUserData(null);
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("user");
+      trackLogout();
+      clearUserAnalytics();
       toast.success("Logout realizado com sucesso!");
     } catch (error: any) {
       console.error("Erro ao fazer logout:", error);

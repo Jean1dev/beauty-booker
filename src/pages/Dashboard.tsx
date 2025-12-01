@@ -1,12 +1,35 @@
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles } from "lucide-react";
+import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserLink } from "@/hooks/use-user-link";
+import { trackNavigation } from "@/lib/analytics";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, userData } = useAuth();
+  const { bookingLink, isLoading: isLoadingLink, error: linkError } = useUserLink({
+    userId: userData?.uid || null,
+    email: userData?.email || null,
+    displayName: userData?.displayName || null,
+  });
+  
+  const handleCopyLink = () => {
+    if (bookingLink) {
+      navigator.clipboard.writeText(bookingLink);
+      toast.success("Link copiado para a área de transferência!");
+    }
+  };
+
+  const handleOpenPreview = () => {
+    if (bookingLink) {
+      window.open(bookingLink, "_blank");
+    } else {
+      toast.error("Link ainda não está disponível");
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -15,6 +38,11 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
     }
+  };
+
+  const handleNavigation = (path: string, title: string) => {
+    trackNavigation("Dashboard", title);
+    navigate(path);
   };
 
   const menuItems = [
@@ -83,16 +111,36 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
+            {linkError && (
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+                <p className="font-semibold mb-1">Erro ao carregar link</p>
+                <p>Verifique as configurações do Firestore. Consulte o arquivo FIRESTORE_SETUP.md para mais informações.</p>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                readOnly
-                value="https://beautybook.app/book/seu-link"
-                className="flex-1 px-4 py-2 bg-secondary rounded-lg border border-border text-sm"
-              />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  readOnly
+                  value={bookingLink || (isLoadingLink ? "Carregando..." : linkError ? "Erro ao carregar" : "")}
+                  className="w-full px-4 py-2 bg-secondary rounded-lg border border-border text-sm pr-10"
+                />
+                {bookingLink && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCopyLink}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    title="Copiar link"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
               <Button
-                onClick={() => navigate("/book/preview")}
-                className="gradient-accent shadow-soft hover:opacity-90 transition-smooth"
+                onClick={handleOpenPreview}
+                disabled={!bookingLink || isLoadingLink}
+                className="gradient-accent shadow-soft hover:opacity-90 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Ver Preview
               </Button>
@@ -106,7 +154,7 @@ const Dashboard = () => {
             <Card
               key={item.path}
               className="shadow-medium hover-lift cursor-pointer group"
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNavigation(item.path, item.title)}
             >
               <CardHeader>
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-4 shadow-soft group-hover:shadow-medium transition-all`}>

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { trackServiceCreated, trackServiceUpdated, trackServiceDeleted } from "@/lib/analytics";
 
 interface Service {
   id: string;
@@ -69,6 +70,7 @@ const Services = () => {
         s.id === editingService.id ? { ...formData, id: s.id } : s
       );
       saveServices(updated);
+      trackServiceUpdated(formData.name);
       toast.success("Serviço atualizado com sucesso!");
     } else {
       const newService: Service = {
@@ -76,6 +78,7 @@ const Services = () => {
         id: Date.now().toString(),
       };
       saveServices([...services, newService]);
+      trackServiceCreated(formData.name);
       toast.success("Serviço criado com sucesso!");
     }
 
@@ -89,8 +92,12 @@ const Services = () => {
   };
 
   const handleDelete = (id: string) => {
+    const service = services.find((s) => s.id === id);
     const updated = services.filter((s) => s.id !== id);
     saveServices(updated);
+    if (service) {
+      trackServiceDeleted(service.name);
+    }
     toast.success("Serviço excluído com sucesso!");
   };
 

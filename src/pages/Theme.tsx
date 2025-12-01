@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { trackThemeChanged } from "@/lib/analytics";
 
 const Theme = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const Theme = () => {
       accent: accentColor,
     };
     localStorage.setItem("customTheme", JSON.stringify(theme));
+    trackThemeChanged("custom");
     toast.success("Tema personalizado salvo!");
   };
 
@@ -39,6 +41,7 @@ const Theme = () => {
   const applyPreset = (preset: typeof presetThemes[0]) => {
     setPrimaryColor(preset.primary);
     setAccentColor(preset.accent);
+    trackThemeChanged("preset");
   };
 
   return (
