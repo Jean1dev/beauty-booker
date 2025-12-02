@@ -13,18 +13,25 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { trackServiceCreated, trackServiceUpdated, trackServiceDeleted } from "@/lib/analytics";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserServices } from "@/hooks/use-user-services";
 import { Service } from "@/services/user-services";
+
+const getDurationText = (duration: number, unit: "min" | "hour") => {
+  const totalMinutes = unit === "hour" ? duration * 60 : duration;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  
+  if (hours === 0) {
+    return `${minutes} min`;
+  } else if (minutes === 0) {
+    return `${hours}h`;
+  } else {
+    return `${hours}h ${minutes}min`;
+  }
+};
 
 const Services = () => {
   const navigate = useNavigate();
@@ -43,6 +50,9 @@ const Services = () => {
     advanceDays: 1,
   });
 
+  const [durationHours, setDurationHours] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(30);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -51,16 +61,28 @@ const Services = () => {
       return;
     }
 
+    if (durationHours === 0 && durationMinutes === 0) {
+      toast.error("A duração deve ser maior que zero");
+      return;
+    }
+
+    const totalMinutes = durationHours * 60 + durationMinutes;
+    const serviceData = {
+      ...formData,
+      duration: totalMinutes,
+      durationUnit: "min" as const,
+    };
+
     try {
       if (editingService) {
         await updateService({
-          ...formData,
+          ...serviceData,
           id: editingService.id,
         });
         trackServiceUpdated(formData.name);
         toast.success("Serviço atualizado com sucesso!");
       } else {
-        const newService = await createService(formData);
+        const newService = await createService(serviceData);
         trackServiceCreated(newService.name);
         toast.success("Serviço criado com sucesso!");
       }
@@ -73,6 +95,9 @@ const Services = () => {
   const handleEdit = (service: Service) => {
     setEditingService(service);
     setFormData(service);
+    const totalMinutes = service.durationUnit === "hour" ? service.duration * 60 : service.duration;
+    setDurationHours(Math.floor(totalMinutes / 60));
+    setDurationMinutes(totalMinutes % 60);
     setIsDialogOpen(true);
   };
 
@@ -97,12 +122,10 @@ const Services = () => {
       durationUnit: "min",
       advanceDays: 1,
     });
+    setDurationHours(0);
+    setDurationMinutes(30);
     setEditingService(null);
     setIsDialogOpen(false);
-  };
-
-  const getDurationText = (duration: number, unit: "min" | "hour") => {
-    return unit === "min" ? `${duration} min` : `${duration}h`;
   };
 
   return (
@@ -153,13 +176,17 @@ const Services = () => {
                     Adicionar Serviço
                   </Button>
                 </DialogTrigger>
-                <ServiceDialog
-                  formData={formData}
-                  setFormData={setFormData}
-                  onSubmit={handleSubmit}
-                  onCancel={resetForm}
-                  isEditing={!!editingService}
-                />
+              <ServiceDialog
+                formData={formData}
+                setFormData={setFormData}
+                onSubmit={handleSubmit}
+                onCancel={resetForm}
+                isEditing={!!editingService}
+                durationHours={durationHours}
+                setDurationHours={setDurationHours}
+                durationMinutes={durationMinutes}
+                setDurationMinutes={setDurationMinutes}
+              />
               </Dialog>
             </CardContent>
           </Card>
@@ -232,6 +259,10 @@ const Services = () => {
                 onSubmit={handleSubmit}
                 onCancel={resetForm}
                 isEditing={!!editingService}
+                durationHours={durationHours}
+                setDurationHours={setDurationHours}
+                durationMinutes={durationMinutes}
+                setDurationMinutes={setDurationMinutes}
               />
             </Dialog>
           </>
@@ -247,12 +278,20 @@ const ServiceDialog = ({
   onSubmit,
   onCancel,
   isEditing,
+  durationHours,
+  setDurationHours,
+  durationMinutes,
+  setDurationMinutes,
 }: {
   formData: any;
   setFormData: any;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   isEditing: boolean;
+  durationHours: number;
+  setDurationHours: (value: number) => void;
+  durationMinutes: number;
+  setDurationMinutes: (value: number) => void;
 }) => {
   return (
     <DialogContent className="sm:max-w-md">
@@ -295,37 +334,47 @@ const ServiceDialog = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="duration">Duração *</Label>
-            <Input
-              id="duration"
-              type="number"
-              min="1"
-              value={formData.duration}
-              onChange={(e) =>
-                setFormData({ ...formData, duration: parseInt(e.target.value) })
-              }
-              required
-            />
+        <div className="space-y-2">
+          <Label>Duração *</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="durationHours" className="text-xs text-muted-foreground">
+                Horas
+              </Label>
+              <Input
+                id="durationHours"
+                type="number"
+                min="0"
+                max="23"
+                value={durationHours}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  setDurationHours(Math.max(0, Math.min(23, value)));
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="durationMinutes" className="text-xs text-muted-foreground">
+                Minutos
+              </Label>
+              <Input
+                id="durationMinutes"
+                type="number"
+                min="0"
+                max="59"
+                value={durationMinutes}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  setDurationMinutes(Math.max(0, Math.min(59, value)));
+                }}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="durationUnit">Unidade</Label>
-            <Select
-              value={formData.durationUnit}
-              onValueChange={(value: "min" | "hour") =>
-                setFormData({ ...formData, durationUnit: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="min">Minutos</SelectItem>
-                <SelectItem value="hour">Horas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {durationHours > 0 || durationMinutes > 0
+              ? `Duração total: ${getDurationText(durationHours * 60 + durationMinutes, "min")}`
+              : "Defina pelo menos 1 minuto"}
+          </p>
         </div>
 
         <div className="space-y-2">

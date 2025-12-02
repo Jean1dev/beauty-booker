@@ -1,14 +1,37 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/use-auth";
+import { useAppointments } from "@/hooks/use-appointments";
+import { useUserServices } from "@/hooks/use-user-services";
+import { CalendarMonthlyView } from "@/components/calendar/CalendarMonthlyView";
+import { CalendarWeeklyView } from "@/components/calendar/CalendarWeeklyView";
+import { CalendarDailyView } from "@/components/calendar/CalendarDailyView";
 
 const Appointments = () => {
   const navigate = useNavigate();
+  const { userData } = useAuth();
+  const { appointments, isLoading, error } = useAppointments({
+    userId: userData?.uid || null,
+  });
+  const { services } = useUserServices({
+    userId: userData?.uid || null,
+  });
+
+  const serviceColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    services.forEach((service) => {
+      map.set(service.id, service.color || "#F4A69F");
+    });
+    return map;
+  }, [services]);
 
   return (
     <div className="min-h-screen p-4 md:p-8 animate-fade-in">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -35,22 +58,37 @@ const Appointments = () => {
               Calendário de Agendamentos
             </CardTitle>
             <CardDescription className="text-primary-foreground/80">
-              Seus compromissos da semana
+              Gerencie todos os seus agendamentos de forma visual
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-12 pb-16">
-            <div className="text-center text-muted-foreground space-y-4">
-              <Calendar className="w-16 h-16 mx-auto opacity-50" />
-              <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Calendário em Desenvolvimento
-                </h3>
-                <p className="text-sm max-w-md mx-auto">
-                  Esta funcionalidade está sendo preparada para você gerenciar
-                  todos os seus agendamentos de forma visual e intuitiva.
-                </p>
+          <CardContent className="pt-6">
+            {isLoading ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Calendar className="w-16 h-16 mx-auto opacity-50 mb-4" />
+                <p>Carregando agendamentos...</p>
               </div>
-            </div>
+            ) : error ? (
+              <div className="text-center py-12 text-destructive">
+                <p>Erro ao carregar agendamentos: {error.message}</p>
+              </div>
+            ) : (
+              <Tabs defaultValue="monthly" className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
+                  <TabsTrigger value="monthly">Mensal</TabsTrigger>
+                  <TabsTrigger value="weekly">Semanal</TabsTrigger>
+                  <TabsTrigger value="daily">Diária</TabsTrigger>
+                </TabsList>
+                <TabsContent value="monthly" className="mt-0">
+                  <CalendarMonthlyView appointments={appointments} serviceColorMap={serviceColorMap} />
+                </TabsContent>
+                <TabsContent value="weekly" className="mt-0">
+                  <CalendarWeeklyView appointments={appointments} serviceColorMap={serviceColorMap} />
+                </TabsContent>
+                <TabsContent value="daily" className="mt-0">
+                  <CalendarDailyView appointments={appointments} serviceColorMap={serviceColorMap} />
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
       </div>
