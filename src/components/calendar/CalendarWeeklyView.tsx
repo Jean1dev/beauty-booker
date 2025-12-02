@@ -13,7 +13,8 @@ interface CalendarWeeklyViewProps {
   serviceColorMap: Map<string, string>;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
+const VISIBLE_HOURS = ALL_HOURS.filter((hour) => hour >= 7);
 
 export const CalendarWeeklyView = ({ appointments, serviceColorMap }: CalendarWeeklyViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -98,7 +99,7 @@ export const CalendarWeeklyView = ({ appointments, serviceColorMap }: CalendarWe
               </div>
 
               <div className="grid grid-cols-8">
-                {HOURS.map((hour) => (
+                {VISIBLE_HOURS.map((hour) => (
                   <div key={hour} className="contents">
                     <div className="p-2 border-r border-b text-sm text-muted-foreground text-right pr-4 bg-muted/20">
                       {format(new Date().setHours(hour, 0, 0, 0), "HH:mm")}

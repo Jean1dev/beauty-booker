@@ -13,7 +13,8 @@ interface CalendarDailyViewProps {
   serviceColorMap: Map<string, string>;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
+const VISIBLE_HOURS = ALL_HOURS.filter((hour) => hour >= 7);
 
 export const CalendarDailyView = ({ appointments, serviceColorMap }: CalendarDailyViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -106,7 +107,7 @@ export const CalendarDailyView = ({ appointments, serviceColorMap }: CalendarDai
             </CardHeader>
             <CardContent className="p-0">
               <div className="relative">
-                {HOURS.map((hour) => {
+                {VISIBLE_HOURS.map((hour) => {
                   const hourAppointments = getAppointmentsForHour(currentDate, hour);
 
                   return (

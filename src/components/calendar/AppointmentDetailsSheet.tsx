@@ -54,8 +54,20 @@ export const AppointmentDetailsSheet = ({
 
   const getDurationText = () => {
     if (!appointment.duration) return "Não especificado";
-    const unit = appointment.durationUnit === "hour" ? "hora(s)" : "minuto(s)";
-    return `${appointment.duration} ${unit}`;
+    
+    const totalMinutes = appointment.durationUnit === "hour" 
+      ? appointment.duration * 60 
+      : appointment.duration;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    if (hours === 0) {
+      return `${minutes} minuto(s)`;
+    } else if (minutes === 0) {
+      return `${hours} hora(s)`;
+    } else {
+      return `${hours}h ${minutes}min`;
+    }
   };
 
   return (
