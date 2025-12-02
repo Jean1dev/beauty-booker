@@ -68,8 +68,8 @@ const Dashboard = () => {
       gradient: "from-success to-primary",
     },
     {
-      title: "Tema",
-      description: "Personalize cores e aparência",
+      title: "Personalização",
+      description: "Personalize cores, logo e aparência",
       icon: Palette,
       path: "/theme",
       gradient: "from-primary via-accent to-success",

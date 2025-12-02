@@ -1,23 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette } from "lucide-react";
+import { ArrowLeft, Palette, Upload, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { trackThemeChanged } from "@/lib/analytics";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/hooks/use-auth";
+import { getUserPreferences, saveUserPreferences } from "@/services/user-preferences";
+import { uploadLogo, deleteLogo } from "@/services/storage";
 
 const Theme = () => {
   const navigate = useNavigate();
   const { theme, updateTheme, applyTheme } = useTheme();
+  const { userData } = useAuth();
   const [primaryColor, setPrimaryColor] = useState(theme.primary);
   const [accentColor, setAccentColor] = useState(theme.accent);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setPrimaryColor(theme.primary);
     setAccentColor(theme.accent);
   }, [theme]);
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      if (userData?.uid) {
+        try {
+          const preferences = await getUserPreferences(userData.uid);
+          if (preferences?.logoUrl) {
+            setLogoUrl(preferences.logoUrl);
+          }
+        } catch (error) {
+          console.error("Erro ao carregar logo:", error);
+        }
+      }
+    };
+    loadLogo();
+  }, [userData?.uid]);
 
   const handleSave = async () => {
     try {
@@ -54,6 +77,66 @@ const Theme = () => {
     }
   };
 
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !userData?.uid) {
+      if (!userData?.uid) {
+        toast.error("Você precisa estar autenticado para fazer upload");
+      }
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione um arquivo de imagem");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    try {
+      setIsUploadingLogo(true);
+      const uploadedUrl = await uploadLogo(userData.uid, file);
+
+      await saveUserPreferences({
+        userId: userData.uid,
+        logoUrl: uploadedUrl,
+      });
+
+      setLogoUrl(uploadedUrl);
+      toast.success("Logo enviado com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao fazer upload do logo:", error);
+      const errorMessage = error.message || "Erro ao fazer upload do logo";
+      toast.error(errorMessage);
+    } finally {
+      setIsUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!userData?.uid) return;
+    
+    try {
+      await deleteLogo(userData.uid);
+      await saveUserPreferences({
+        userId: userData.uid,
+        logoUrl: null,
+      });
+      setLogoUrl(null);
+      toast.success("Logo removido com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao remover logo:", error);
+      const errorMessage = error.message || "Erro ao remover logo";
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 md:p-8 animate-fade-in">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -71,7 +154,7 @@ const Theme = () => {
               Personalização
             </h1>
             <p className="text-muted-foreground mt-1">
-              Customize as cores do seu sistema
+              Customize cores e logo do seu sistema
             </p>
           </div>
         </div>
@@ -87,6 +170,70 @@ const Theme = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
+            {/* Logo Upload */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Logo</Label>
+              <div className="space-y-4">
+                {logoUrl ? (
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <img
+                        src={logoUrl}
+                        alt="Logo"
+                        className="w-32 h-32 object-contain rounded-lg border border-border p-2 bg-secondary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingLogo}
+                        className="shadow-soft"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {isUploadingLogo ? "Enviando..." : "Alterar Logo"}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleRemoveLogo}
+                        disabled={isUploadingLogo}
+                        className="shadow-soft"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Remover Logo
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
+                    <ImageIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Nenhum logo enviado
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingLogo}
+                      className="shadow-soft"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploadingLogo ? "Enviando..." : "Enviar Logo"}
+                    </Button>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB
+                </p>
+              </div>
+            </div>
+
             {/* Preset Themes */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold">Temas Predefinidos</Label>
