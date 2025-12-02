@@ -5,14 +5,35 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
+const requiredEnvVars = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
+
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
+  throw new Error(
+    `Missing required Firebase environment variables: ${missingVars.join(", ")}. ` +
+    `Please create a .env file with the required variables. See .env.example for reference.`
+  );
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCYPjuNaYDo_66VFe30FADifhMxzuonEeA",
-  authDomain: "beaulty-book.firebaseapp.com",
-  projectId: "beaulty-book",
-  storageBucket: "beaulty-book.firebasestorage.app",
-  messagingSenderId: "430911372516",
-  appId: "1:430911372516:web:1dcda82966d2827b6b00f1",
-  measurementId: "G-55V22JZYHE"
+  apiKey: requiredEnvVars.apiKey!,
+  authDomain: requiredEnvVars.authDomain!,
+  projectId: requiredEnvVars.projectId!,
+  storageBucket: requiredEnvVars.storageBucket!,
+  messagingSenderId: requiredEnvVars.messagingSenderId!,
+  appId: requiredEnvVars.appId!,
+  measurementId: requiredEnvVars.measurementId!
 };
 
 const app = initializeApp(firebaseConfig);
