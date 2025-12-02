@@ -7,17 +7,16 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     match /availability/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     match /user_services/{serviceId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId || 
-                     resource.data.userId != null;
+      allow read: if true;
       allow write: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
     match /appointments/{appointmentId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId || 
-                     resource.data.userId != null;
+      allow read: if resource.data.userId != null;
       allow create: if request.resource.data.userId != null;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }

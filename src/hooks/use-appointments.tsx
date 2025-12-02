@@ -1,0 +1,43 @@
+import { useState, useEffect } from "react";
+import { getAppointmentsByUserId, Appointment } from "@/services/appointments";
+
+interface UseAppointmentsProps {
+  userId: string | null;
+}
+
+export const useAppointments = ({ userId }: UseAppointmentsProps) => {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const loadAppointments = async () => {
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getAppointmentsByUserId(userId);
+        setAppointments(data);
+      } catch (err: any) {
+        const error = err instanceof Error ? err : new Error("Erro ao carregar agendamentos");
+        setError(error);
+        console.error("Erro ao carregar agendamentos:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAppointments();
+  }, [userId]);
+
+  return {
+    appointments,
+    isLoading,
+    error,
+  };
+};
+
