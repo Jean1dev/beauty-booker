@@ -13,6 +13,7 @@ export const useBookingData = ({ userLink }: UseBookingDataProps) => {
   const [services, setServices] = useState<Service[]>([]);
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [bookedSlots, setBookedSlots] = useState<{ date: string; time: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -34,6 +35,7 @@ export const useBookingData = ({ userLink }: UseBookingDataProps) => {
           setUserId(data.userId);
           setServices(data.services);
           setAvailability(data.availability);
+          setLogoUrl(data.logoUrl || null);
           
           const startDate = new Date();
           const endDate = addDays(new Date(), 30);
@@ -58,6 +60,7 @@ export const useBookingData = ({ userLink }: UseBookingDataProps) => {
     services,
     availability,
     userId,
+    logoUrl,
     bookedSlots,
     isLoading,
     error,

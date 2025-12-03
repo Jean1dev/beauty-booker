@@ -19,7 +19,7 @@ import { SuccessStep } from "@/components/booking/SuccessStep";
 
 const BookingPublic = () => {
   const { userLink } = useParams<{ userLink: string }>();
-  const { services, availability, userId, bookedSlots, isLoading, error } = useBookingData({ userLink: userLink || null });
+  const { services, availability, userId, logoUrl, bookedSlots, isLoading, error } = useBookingData({ userLink: userLink || null });
   
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -218,7 +218,7 @@ const BookingPublic = () => {
   return (
     <div className="min-h-screen p-4 md:p-8 animate-fade-in">
       <div className="max-w-2xl mx-auto space-y-6">
-        <BookingHeader />
+        <BookingHeader logoUrl={logoUrl || undefined} />
         <ProgressIndicator currentStep={step} />
 
         {step === 1 && (

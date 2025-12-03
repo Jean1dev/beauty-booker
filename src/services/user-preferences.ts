@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export interface ThemeColors {
@@ -10,6 +10,7 @@ export interface UserPreferences {
   userId: string;
   userLink?: string;
   theme?: ThemeColors;
+  logoUrl?: string;
   [key: string]: any;
 }
 
@@ -34,7 +35,13 @@ export const getUserPreferences = async (userId: string): Promise<UserPreference
 export const saveUserPreferences = async (preferences: UserPreferences): Promise<void> => {
   try {
     const docRef = doc(db, COLLECTION_NAME, preferences.userId);
-    await setDoc(docRef, preferences, { merge: true });
+    const dataToSave: any = { ...preferences };
+    
+    if (dataToSave.logoUrl === null || dataToSave.logoUrl === undefined) {
+      dataToSave.logoUrl = deleteField();
+    }
+    
+    await setDoc(docRef, dataToSave, { merge: true });
   } catch (error) {
     console.error("Erro ao salvar preferências do usuário:", error);
     throw error;

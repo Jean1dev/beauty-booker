@@ -22,9 +22,30 @@ cd <YOUR_PROJECT_NAME>
 # Passo 3: Instale as dependências necessárias.
 npm i
 
-# Passo 4: Inicie o servidor de desenvolvimento com auto-reload e preview instantâneo.
+# Passo 4: Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas credenciais do Firebase
+
+# Passo 5: Inicie o servidor de desenvolvimento com auto-reload e preview instantâneo.
 npm run dev
 ```
+
+### Configuração de Variáveis de Ambiente
+
+Este projeto requer variáveis de ambiente para funcionar corretamente. Após clonar o repositório:
+
+1. Copie o arquivo `.env.example` para `.env`
+2. Preencha as variáveis com suas credenciais do Firebase:
+   - `VITE_FIREBASE_API_KEY`: Sua chave de API do Firebase
+   - `VITE_FIREBASE_AUTH_DOMAIN`: Domínio de autenticação (geralmente `seu-projeto.firebaseapp.com`)
+   - `VITE_FIREBASE_PROJECT_ID`: ID do seu projeto Firebase
+   - `VITE_FIREBASE_STORAGE_BUCKET`: Bucket de armazenamento (geralmente `seu-projeto.firebasestorage.app`)
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`: ID do remetente de mensagens
+   - `VITE_FIREBASE_APP_ID`: ID do aplicativo
+   - `VITE_FIREBASE_MEASUREMENT_ID`: ID de medição do Analytics
+   - `VITE_RECAPTCHA_SITE_KEY`: Chave do site reCAPTCHA (opcional)
+
+**Importante**: Nunca commite o arquivo `.env` no repositório. Ele já está no `.gitignore`.
 
 **Editar um arquivo diretamente no GitHub**
 

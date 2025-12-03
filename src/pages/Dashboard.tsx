@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useUserLink } from "@/hooks/use-user-link";
 import { trackNavigation } from "@/lib/analytics";
 import { toast } from "sonner";
+import Onboarding from "@/components/onboarding/Onboarding";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -15,6 +16,27 @@ const Dashboard = () => {
     email: userData?.email || null,
     displayName: userData?.displayName || null,
   });
+
+  if (isLoadingLink) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!bookingLink && userData?.uid) {
+    return (
+      <Onboarding
+        userId={userData.uid}
+        email={userData.email || null}
+        displayName={userData.displayName || null}
+        onComplete={() => window.location.reload()}
+      />
+    );
+  }
   
   const handleCopyLink = () => {
     if (bookingLink) {
@@ -68,8 +90,8 @@ const Dashboard = () => {
       gradient: "from-success to-primary",
     },
     {
-      title: "Tema",
-      description: "Personalize cores e aparência",
+      title: "Personalização",
+      description: "Personalize cores, logo e aparência",
       icon: Palette,
       path: "/theme",
       gradient: "from-primary via-accent to-success",

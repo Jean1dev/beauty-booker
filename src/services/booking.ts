@@ -2,6 +2,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getUserServices, Service } from "@/services/user-services";
 import { getAvailability, Availability } from "@/services/availability";
+import { getUserPreferences } from "@/services/user-preferences";
 
 export interface BookingUserData {
   userId: string;
@@ -12,6 +13,7 @@ export interface BookingData {
   userId: string;
   services: Service[];
   availability: Availability;
+  logoUrl?: string;
 }
 
 export const getUserIdByLink = async (userLink: string): Promise<string | null> => {
@@ -41,15 +43,17 @@ export const getBookingData = async (userLink: string): Promise<BookingData | nu
       return null;
     }
     
-    const [services, availability] = await Promise.all([
+    const [services, availability, preferences] = await Promise.all([
       getUserServices(userId),
       getAvailability(userId),
+      getUserPreferences(userId),
     ]);
     
     return {
       userId,
       services,
       availability,
+      logoUrl: preferences?.logoUrl,
     };
   } catch (error) {
     console.error("Erro ao buscar dados de agendamento:", error);

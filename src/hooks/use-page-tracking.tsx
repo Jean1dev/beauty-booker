@@ -8,7 +8,7 @@ const pageNames: Record<string, string> = {
   "/services": "Serviços",
   "/availability": "Disponibilidade",
   "/appointments": "Agendamentos",
-  "/theme": "Tema",
+  "/theme": "Personalização",
   "/book/preview": "Preview de Agendamento",
 };
 

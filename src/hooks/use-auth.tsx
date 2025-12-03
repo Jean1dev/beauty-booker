@@ -37,8 +37,7 @@ export const useAuth = () => {
       } else {
         setUser(null);
         setUserData(null);
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("user");
+        localStorage.clear();
         clearUserAnalytics();
       }
       setIsCheckingAuth(false);
@@ -88,8 +87,7 @@ export const useAuth = () => {
       await signOut(auth);
       setUser(null);
       setUserData(null);
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("user");
+      localStorage.clear();
       trackLogout();
       clearUserAnalytics();
       toast.success("Logout realizado com sucesso!");

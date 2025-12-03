@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { getUserPreferences, saveUserLink } from "@/services/user-preferences";
-import { generateUserId } from "@/lib/user-id";
+import { getUserPreferences } from "@/services/user-preferences";
 
 interface UseUserLinkProps {
   userId: string | null;
@@ -29,9 +28,7 @@ export const useUserLink = ({ userId, email, displayName }: UseUserLinkProps) =>
         if (preferences?.userLink) {
           setUserLink(preferences.userLink);
         } else {
-          const generatedLink = generateUserId(userId, email, displayName);
-          await saveUserLink(userId, generatedLink);
-          setUserLink(generatedLink);
+          setUserLink(null);
         }
       } catch (err: any) {
         const error = err instanceof Error ? err : new Error("Erro ao buscar/criar link do usuário");
