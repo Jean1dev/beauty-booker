@@ -16,6 +16,7 @@ export interface Appointment {
   duration?: number;
   durationUnit?: "min" | "hour";
   status: "pending" | "confirmed" | "cancelled" | "completed";
+  googleCalendarEventId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
