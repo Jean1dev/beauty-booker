@@ -1,18 +1,21 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Calendar, CalendarCheck, CalendarX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useUserServices } from "@/hooks/use-user-services";
+import { useGoogleCalendar } from "@/hooks/use-google-calendar";
 import { CalendarMonthlyView } from "@/components/calendar/CalendarMonthlyView";
 import { CalendarWeeklyView } from "@/components/calendar/CalendarWeeklyView";
 import { CalendarDailyView } from "@/components/calendar/CalendarDailyView";
+import { toast } from "sonner";
 
 const Appointments = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { userData } = useAuth();
   const { appointments, isLoading, error } = useAppointments({
     userId: userData?.uid || null,
@@ -20,6 +23,22 @@ const Appointments = () => {
   const { services } = useUserServices({
     userId: userData?.uid || null,
   });
+  const { isConnected, isLoading: isLoadingCalendar, isConnecting, connect, disconnect } = useGoogleCalendar({
+    userId: userData?.uid || null,
+  });
+
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const errorMessage = searchParams.get("message");
+    
+    if (connected === "success") {
+      toast.success("Google Calendar conectado com sucesso!");
+      setSearchParams({});
+    } else if (connected === "error") {
+      toast.error(errorMessage || "Erro ao conectar com Google Calendar");
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const serviceColorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -53,13 +72,43 @@ const Appointments = () => {
 
         <Card className="shadow-medium">
           <CardHeader className="gradient-primary text-primary-foreground rounded-t-2xl">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Calendário de Agendamentos
-            </CardTitle>
-            <CardDescription className="text-primary-foreground/80">
-              Gerencie todos os seus agendamentos de forma visual
-            </CardDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Calendário de Agendamentos
+                </CardTitle>
+                <CardDescription className="text-primary-foreground/80">
+                  Gerencie todos os seus agendamentos de forma visual
+                </CardDescription>
+              </div>
+              {!isLoadingCalendar && (
+                <div className="flex items-center gap-2">
+                  {isConnected ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={disconnect}
+                      className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/20"
+                    >
+                      <CalendarX className="w-4 h-4 mr-2" />
+                      Desconectar
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={connect}
+                      disabled={isConnecting}
+                      className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/20"
+                    >
+                      <CalendarCheck className="w-4 h-4 mr-2" />
+                      {isConnecting ? "Conectando..." : "Conectar com Google Agenda"}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="pt-6">
             {isLoading ? (

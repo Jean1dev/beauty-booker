@@ -3,6 +3,7 @@ import { getAnalytics, Analytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const requiredEnvVars = {
@@ -41,6 +42,21 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 const db = getFirestore(app);
 const storage = getStorage(app);
+const functions = getFunctions(app);
+
+if (typeof window !== "undefined") {
+  const isDevelopment = import.meta.env.DEV || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  
+  if (isDevelopment) {
+    const useEmulator = import.meta.env.VITE_USE_FUNCTIONS_EMULATOR === "true";
+    if (useEmulator) {
+      import("firebase/functions").then(({connectFunctionsEmulator}) => {
+        connectFunctionsEmulator(functions, "localhost", 5001);
+        console.log("🔧 Firebase Functions conectado ao emulador local");
+      });
+    }
+  }
+}
 
 let analytics: Analytics | null = null;
 if (typeof window !== "undefined") {
@@ -74,4 +90,4 @@ if (typeof window !== "undefined") {
   }
 }
 
-export { auth, googleProvider, analytics, db, storage };
+export { auth, googleProvider, analytics, db, storage, functions };
