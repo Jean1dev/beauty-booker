@@ -42,6 +42,21 @@ const removeHolidays = (
   });
 };
 
+const removeExcludedDays = (
+  slots: AvailableSlot[],
+  excludedDays: string[]
+): AvailableSlot[] => {
+  if (!excludedDays || excludedDays.length === 0) {
+    return slots;
+  }
+
+  const excludedSet = new Set(excludedDays);
+
+  return slots.filter((slot) => {
+    return !excludedSet.has(slot.date);
+  });
+};
+
 const applyAdvanceDays = (
   slots: AvailableSlot[],
   advanceDays: number
@@ -181,7 +196,8 @@ export const processAvailability = (
   service: Service,
   startDate: Date = new Date(),
   endDate: Date = addDays(new Date(), 30),
-  bookedSlots: { date: string; time: string }[] = []
+  bookedSlots: { date: string; time: string }[] = [],
+  excludedDays: string[] = []
 ): ProcessedAvailability => {
   const enabledDays = getEnabledDays(availability.schedule);
   
@@ -192,6 +208,8 @@ export const processAvailability = (
     availability.holidays || [],
     availability.holidaysEnabled || false
   );
+  
+  slots = removeExcludedDays(slots, excludedDays);
   
   slots = applyAdvanceDays(slots, service.advanceDays);
   

@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Services from "./pages/Services";
 import Availability from "./pages/Availability";
+import ExcludedDays from "./pages/ExcludedDays";
 import Appointments from "./pages/Appointments";
 import Theme from "./pages/Theme";
 import BookingPublic from "./pages/BookingPublic";
@@ -56,6 +57,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Availability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/availability/excluded-days"
+            element={
+              <ProtectedRoute>
+                <ExcludedDays />
               </ProtectedRoute>
             }
           />

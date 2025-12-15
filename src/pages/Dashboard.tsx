@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles, Copy } from "lucide-react";
+import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles, Copy, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -81,6 +81,13 @@ const Dashboard = () => {
       icon: Clock,
       path: "/availability",
       gradient: "from-accent to-success",
+    },
+    {
+      title: "Dias Excluídos",
+      description: "Gerencie dias específicos que não irá trabalhar",
+      icon: XCircle,
+      path: "/availability/excluded-days",
+      gradient: "from-destructive to-orange-500",
     },
     {
       title: "Agenda",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getAvailability, saveAvailability, DaySchedule, DEFAULT_SCHEDULE, HolidayConfig, Availability } from "@/services/availability";
+import { getExcludedDays, setExcludedDays as saveExcludedDays } from "@/services/excluded-days";
 
 interface UseAvailabilityProps {
   userId: string | null;
@@ -10,6 +11,7 @@ export const useAvailability = ({ userId }: UseAvailabilityProps) => {
   const [holidays, setHolidays] = useState<HolidayConfig[]>([]);
   const [holidaysEnabled, setHolidaysEnabled] = useState(false);
   const [holidaysCountry, setHolidaysCountry] = useState("Brasil");
+  const [excludedDays, setExcludedDays] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -48,6 +50,10 @@ export const useAvailability = ({ userId }: UseAvailabilityProps) => {
         setHolidays(availabilityData.holidays || []);
         setHolidaysEnabled(availabilityData.holidaysEnabled ?? false);
         setHolidaysCountry(availabilityData.holidaysCountry || "Brasil");
+        
+        const excluded = await getExcludedDays(userId);
+        setExcludedDays(excluded);
+        
         localStorage.setItem("availability", JSON.stringify(availabilityData.schedule));
       } catch (err: any) {
         const error = err instanceof Error ? err : new Error("Erro ao carregar disponibilidade");
@@ -115,15 +121,29 @@ export const useAvailability = ({ userId }: UseAvailabilityProps) => {
     }
   };
 
+  const updateExcludedDays = async (newExcludedDays: string[]) => {
+    try {
+      if (userId) {
+        await saveExcludedDays(userId, newExcludedDays);
+        setExcludedDays(newExcludedDays);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar dias excluídos:", error);
+      throw error;
+    }
+  };
+
   return {
     schedule,
     holidays,
     holidaysEnabled,
     holidaysCountry,
+    excludedDays,
     isLoading,
     error,
     updateSchedule,
     updateHolidays,
+    updateExcludedDays,
     setHolidaysEnabled,
     setHolidaysCountry,
   };
