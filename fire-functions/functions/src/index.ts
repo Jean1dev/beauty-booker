@@ -16,6 +16,8 @@ import {DisconnectGoogleCalendarUseCase} from
   "./use-cases/disconnect-google-calendar.use-case";
 import {SyncAppointmentToGoogleCalendarUseCase} from
   "./use-cases/sync-appointment-to-google-calendar.use-case";
+import {SendAppointmentNotificationUseCase} from
+  "./use-cases/send-appointment-notification.use-case";
 import {
   CreateCalendarEventRequest,
   AppointmentData,
@@ -134,6 +136,15 @@ export const syncAppointmentToGoogleCalendar = onDocumentCreated(
       );
     } catch (error: unknown) {
       logger.error("Erro ao sincronizar agendamento:", error);
+    }
+
+    try {
+      await SendAppointmentNotificationUseCase.execute(
+        userId,
+        appointmentData as AppointmentData
+      );
+    } catch (error: unknown) {
+      logger.error("Erro ao enviar notificação de agendamento:", error);
     }
   }
 );
