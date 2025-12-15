@@ -5,15 +5,15 @@ import {GoogleCalendarIntegration, OAuthTokens} from "../types/google-calendar.t
 
 export class OAuthService {
   private static getOAuth2Client() {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const projectId = process.env.GCLOUD_PROJECT || admin.app().options.projectId;
-    const region = process.env.FUNCTION_REGION || "us-central1";
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+    const projectId = (process.env.GCLOUD_PROJECT || admin.app().options.projectId)?.trim();
+    const region = (process.env.FUNCTION_REGION || "us-central1")?.trim();
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
+    const redirectUri = (process.env.GOOGLE_REDIRECT_URI?.trim() ||
       (isEmulator ?
         `http://localhost:5001/${projectId}/us-central1/googleCalendarCallback` :
-        `https://${region}-${projectId}.cloudfunctions.net/googleCalendarCallback`);
+        `https://${region}-${projectId}.cloudfunctions.net/googleCalendarCallback`))?.trim();
 
     if (!clientId || !clientSecret) {
       throw new Error("GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET devem estar configurados");
@@ -50,7 +50,7 @@ export class OAuthService {
       const oauth2Client = this.getOAuth2Client();
       const ticket = await oauth2Client.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: process.env.GOOGLE_CLIENT_ID?.trim(),
       });
       return ticket.getUserId() || "";
     } catch {

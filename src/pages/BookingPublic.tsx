@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Sparkles, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { ServiceSelectionStep } from "@/components/booking/ServiceSelectionStep"
 import { DateTimeSelectionStep } from "@/components/booking/DateTimeSelectionStep";
 import { ConfirmationStep } from "@/components/booking/ConfirmationStep";
 import { SuccessStep } from "@/components/booking/SuccessStep";
+import { getExcludedDays } from "@/services/excluded-days";
 
 const BookingPublic = () => {
   const { userLink } = useParams<{ userLink: string }>();
@@ -32,6 +33,22 @@ const BookingPublic = () => {
     phone: "",
     notes: "",
   });
+  const [excludedDays, setExcludedDays] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadExcludedDays = async () => {
+      if (userId) {
+        try {
+          const excluded = await getExcludedDays(userId);
+          setExcludedDays(excluded);
+        } catch (error) {
+          console.error("Erro ao carregar dias excluídos:", error);
+        }
+      }
+    };
+
+    loadExcludedDays();
+  }, [userId]);
 
   const processedAvailability = useMemo(() => {
     if (!selectedService || !availability) {
@@ -41,8 +58,8 @@ const BookingPublic = () => {
     const startDate = new Date();
     const endDate = addDays(new Date(), 30);
     
-    return processAvailability(availability, selectedService, startDate, endDate, bookedSlots);
-  }, [selectedService, availability, bookedSlots]);
+    return processAvailability(availability, selectedService, startDate, endDate, bookedSlots, excludedDays);
+  }, [selectedService, availability, bookedSlots, excludedDays]);
 
   const availableDates = useMemo(() => {
     if (!processedAvailability) {
