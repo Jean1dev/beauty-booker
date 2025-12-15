@@ -70,12 +70,40 @@ export const removeExcludedDay = async (userId: string, date: string): Promise<v
   }
 };
 
+export const getAllExcludedDays = async (userId: string): Promise<string[]> => {
+  try {
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where("userId", "==", userId)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const excludedDays: string[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.date) {
+        excludedDays.push(data.date);
+      }
+    });
+
+    return excludedDays.sort();
+  } catch (error) {
+    console.error("Erro ao buscar todos os dias excluídos:", error);
+    return [];
+  }
+};
+
 export const setExcludedDays = async (userId: string, dates: string[]): Promise<void> => {
   try {
-    const currentExcludedDays = await getExcludedDays(userId);
+    const allCurrentExcludedDays = await getAllExcludedDays(userId);
+    const today = startOfDay(new Date());
+    const todayString = today.toISOString().split("T")[0];
     
-    const datesToAdd = dates.filter((date) => !currentExcludedDays.includes(date));
-    const datesToRemove = currentExcludedDays.filter((date) => !dates.includes(date));
+    const currentFromToday = allCurrentExcludedDays.filter((date) => date >= todayString);
+    
+    const datesToAdd = dates.filter((date) => !allCurrentExcludedDays.includes(date));
+    const datesToRemove = currentFromToday.filter((date) => !dates.includes(date));
 
     const addPromises = datesToAdd.map((date) => addExcludedDay(userId, date));
     const removePromises = datesToRemove.map((date) => removeExcludedDay(userId, date));
