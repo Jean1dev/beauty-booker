@@ -1,6 +1,8 @@
-import { collection, query, where, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, Timestamp, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { format, parseISO } from "date-fns";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/lib/firebase";
 
 export interface Appointment {
   id?: string;
@@ -173,3 +175,12 @@ export const getBookedSlots = async (
   }
 };
 
+export const cancelAppointment = async (appointmentId: string): Promise<void> => {
+  try {
+    const cancelAppointmentFn = httpsCallable(functions, "cancelAppointment");
+    await cancelAppointmentFn({ appointmentId });
+  } catch (error) {
+    console.error("Erro ao cancelar agendamento:", error);
+    throw error;
+  }
+};

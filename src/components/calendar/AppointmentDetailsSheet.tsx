@@ -1,4 +1,5 @@
-import { Appointment } from "@/services/appointments";
+import { useState } from "react";
+import { Appointment, cancelAppointment } from "@/services/appointments";
 import {
   Sheet,
   SheetContent,
@@ -7,16 +8,30 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, User, Phone, FileText, Calendar, Sparkles } from "lucide-react";
+import { Clock, User, Phone, FileText, Calendar, Sparkles, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppointmentDetailsSheetProps {
   appointment: Appointment | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serviceColor: string;
+  onAppointmentCancelled?: () => void;
 }
 
 export const AppointmentDetailsSheet = ({
@@ -24,7 +39,12 @@ export const AppointmentDetailsSheet = ({
   open,
   onOpenChange,
   serviceColor,
+  onAppointmentCancelled,
 }: AppointmentDetailsSheetProps) => {
+  const { toast } = useToast();
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+
   if (!appointment) {
     return (
       <Sheet open={false} onOpenChange={onOpenChange}>
@@ -36,6 +56,34 @@ export const AppointmentDetailsSheet = ({
   const appointmentDate = appointment.dateTime.toDate();
   const formattedDate = format(appointmentDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
   const formattedTime = format(appointmentDate, "HH:mm", { locale: ptBR });
+
+  const handleCancel = async () => {
+    if (!appointment.id) return;
+
+    try {
+      setIsCancelling(true);
+      await cancelAppointment(appointment.id);
+      toast({
+        title: "Agendamento cancelado",
+        description: "O agendamento foi cancelado com sucesso.",
+      });
+      setShowCancelDialog(false);
+      onOpenChange(false);
+      if (onAppointmentCancelled) {
+        onAppointmentCancelled();
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao cancelar",
+        description: "Não foi possível cancelar o agendamento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const canCancel = appointment.status !== "cancelled" && appointment.status !== "completed";
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -181,6 +229,39 @@ export const AppointmentDetailsSheet = ({
               </>
             )}
           </div>
+
+          {canCancel && (
+            <>
+              <Separator />
+              <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full">
+                    <X className="w-4 h-4 mr-2" />
+                    Cancelar Agendamento
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.
+                      {appointment.googleCalendarEventId && " O evento também será removido do Google Calendar."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isCancelling}>Não</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      disabled={isCancelling}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isCancelling ? "Cancelando..." : "Sim, cancelar"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>

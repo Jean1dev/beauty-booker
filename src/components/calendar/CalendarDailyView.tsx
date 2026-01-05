@@ -11,12 +11,13 @@ import { AppointmentDetailsSheet } from "./AppointmentDetailsSheet";
 interface CalendarDailyViewProps {
   appointments: Appointment[];
   serviceColorMap: Map<string, string>;
+  onAppointmentCancelled?: () => void;
 }
 
 const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const VISIBLE_HOURS = ALL_HOURS.filter((hour) => hour >= 7);
 
-export const CalendarDailyView = ({ appointments, serviceColorMap }: CalendarDailyViewProps) => {
+export const CalendarDailyView = ({ appointments, serviceColorMap, onAppointmentCancelled }: CalendarDailyViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -230,6 +231,7 @@ export const CalendarDailyView = ({ appointments, serviceColorMap }: CalendarDai
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         serviceColor={selectedAppointment ? getServiceColor(selectedAppointment.serviceId) : "#F4A69F"}
+        onAppointmentCancelled={onAppointmentCancelled}
       />
     </div>
   );

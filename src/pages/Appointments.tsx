@@ -17,7 +17,7 @@ const Appointments = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { userData } = useAuth();
-  const { appointments, isLoading, error } = useAppointments({
+  const { appointments, isLoading, error, refetch } = useAppointments({
     userId: userData?.uid || null,
   });
   const { services } = useUserServices({
@@ -128,13 +128,13 @@ const Appointments = () => {
                   <TabsTrigger value="daily">Diária</TabsTrigger>
                 </TabsList>
                 <TabsContent value="monthly" className="mt-0">
-                  <CalendarMonthlyView appointments={appointments} serviceColorMap={serviceColorMap} />
+                  <CalendarMonthlyView appointments={appointments} serviceColorMap={serviceColorMap} onAppointmentCancelled={refetch} />
                 </TabsContent>
                 <TabsContent value="weekly" className="mt-0">
-                  <CalendarWeeklyView appointments={appointments} serviceColorMap={serviceColorMap} />
+                  <CalendarWeeklyView appointments={appointments} serviceColorMap={serviceColorMap} onAppointmentCancelled={refetch} />
                 </TabsContent>
                 <TabsContent value="daily" className="mt-0">
-                  <CalendarDailyView appointments={appointments} serviceColorMap={serviceColorMap} />
+                  <CalendarDailyView appointments={appointments} serviceColorMap={serviceColorMap} onAppointmentCancelled={refetch} />
                 </TabsContent>
               </Tabs>
             )}

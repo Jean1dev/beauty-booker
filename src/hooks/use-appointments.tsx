@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getAppointmentsByUserId, Appointment } from "@/services/appointments";
 
 interface UseAppointmentsProps {
@@ -10,34 +10,35 @@ export const useAppointments = ({ userId }: UseAppointmentsProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const loadAppointments = async () => {
-      if (!userId) {
-        setIsLoading(false);
-        return;
-      }
+  const loadAppointments = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await getAppointmentsByUserId(userId);
-        setAppointments(data);
-      } catch (err: any) {
-        const error = err instanceof Error ? err : new Error("Erro ao carregar agendamentos");
-        setError(error);
-        console.error("Erro ao carregar agendamentos:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadAppointments();
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await getAppointmentsByUserId(userId);
+      setAppointments(data);
+    } catch (err: any) {
+      const error = err instanceof Error ? err : new Error("Erro ao carregar agendamentos");
+      setError(error);
+      console.error("Erro ao carregar agendamentos:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [userId]);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
 
   return {
     appointments,
     isLoading,
     error,
+    refetch: loadAppointments,
   };
 };
 

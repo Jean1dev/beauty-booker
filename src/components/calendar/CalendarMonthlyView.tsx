@@ -11,11 +11,12 @@ import { AppointmentDetailsSheet } from "./AppointmentDetailsSheet";
 interface CalendarMonthlyViewProps {
   appointments: Appointment[];
   serviceColorMap: Map<string, string>;
+  onAppointmentCancelled?: () => void;
 }
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-export const CalendarMonthlyView = ({ appointments, serviceColorMap }: CalendarMonthlyViewProps) => {
+export const CalendarMonthlyView = ({ appointments, serviceColorMap, onAppointmentCancelled }: CalendarMonthlyViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -141,6 +142,7 @@ export const CalendarMonthlyView = ({ appointments, serviceColorMap }: CalendarM
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         serviceColor={selectedAppointment ? getServiceColor(selectedAppointment.serviceId) : "#F4A69F"}
+        onAppointmentCancelled={onAppointmentCancelled}
       />
     </div>
   );
