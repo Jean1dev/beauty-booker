@@ -1,3 +1,5 @@
+import * as admin from "firebase-admin";
+
 export interface GoogleCalendarIntegration {
   userId: string;
   googleUserId: string;
@@ -7,8 +9,8 @@ export interface GoogleCalendarIntegration {
   scope: string;
   tokenType: string;
   syncToken?: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: admin.firestore.Timestamp | admin.firestore.FieldValue;
+  updatedAt: admin.firestore.Timestamp | admin.firestore.FieldValue;
 }
 
 export interface CreateCalendarEventRequest {
@@ -38,7 +40,7 @@ export interface AppointmentData {
   clientName: string;
   clientPhone: string;
   clientNotes?: string;
-  dateTime: any;
+  dateTime: admin.firestore.Timestamp;
   duration?: number;
   durationUnit?: "min" | "hour";
 }

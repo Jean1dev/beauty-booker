@@ -18,6 +18,8 @@ import {SyncAppointmentToGoogleCalendarUseCase} from
   "./use-cases/sync-appointment-to-google-calendar.use-case";
 import {SendAppointmentNotificationUseCase} from
   "./use-cases/send-appointment-notification.use-case";
+import {CancelAppointmentUseCase} from
+  "./use-cases/cancel-appointment.use-case";
 import {
   CreateCalendarEventRequest,
   AppointmentData,
@@ -146,5 +148,26 @@ export const syncAppointmentToGoogleCalendar = onDocumentCreated(
     } catch (error: unknown) {
       logger.error("Erro ao enviar notificação de agendamento:", error);
     }
+  }
+);
+
+export const cancelAppointment = onCall(
+  {
+    secrets: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI"],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new Error("Usuário não autenticado");
+    }
+
+    const uid = request.auth.uid;
+    const appointmentId = request.data?.appointmentId as string;
+
+    if (!appointmentId) {
+      throw new Error("ID do agendamento é obrigatório");
+    }
+
+    await CancelAppointmentUseCase.execute(uid, appointmentId);
+    return {success: true};
   }
 );

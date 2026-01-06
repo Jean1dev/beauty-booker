@@ -35,5 +35,17 @@ export class CalendarService {
       htmlLink: response.data.htmlLink || undefined,
     };
   }
+
+  static async cancelEvent(
+    client: Auth.OAuth2Client,
+    eventId: string
+  ): Promise<void> {
+    const calendar = google.calendar({version: "v3", auth: client});
+
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId: eventId,
+    });
+  }
 }
 
