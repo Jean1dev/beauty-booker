@@ -113,63 +113,6 @@ const removeBookedAppointments = (
   });
 };
 
-const filterSlotsByServiceDuration = (
-  slots: AvailableSlot[],
-  service: Service
-): AvailableSlot[] => {
-  if (!service.duration) {
-    return slots;
-  }
-
-  let requiredSlots = 1;
-  if (service.durationUnit === "hour") {
-    requiredSlots = Math.ceil((service.duration * 60) / 30);
-  } else {
-    requiredSlots = Math.ceil(service.duration / 30);
-  }
-
-  if (requiredSlots <= 1) {
-    return slots;
-  }
-
-  const slotsByDate = new Map<string, AvailableSlot[]>();
-  slots.forEach((slot) => {
-    if (!slotsByDate.has(slot.date)) {
-      slotsByDate.set(slot.date, []);
-    }
-    slotsByDate.get(slot.date)!.push(slot);
-  });
-
-  const validSlots: AvailableSlot[] = [];
-
-  slotsByDate.forEach((dateSlots) => {
-    dateSlots.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-
-    const availableTimesSet = new Set(dateSlots.map((s) => s.time));
-
-    dateSlots.forEach((slot) => {
-      let hasConsecutiveSlots = true;
-
-      for (let i = 0; i < requiredSlots; i++) {
-        const expectedTime = new Date(slot.dateTime);
-        expectedTime.setMinutes(expectedTime.getMinutes() + i * 30);
-        const expectedTimeStr = format(expectedTime, "HH:mm");
-
-        if (!availableTimesSet.has(expectedTimeStr)) {
-          hasConsecutiveSlots = false;
-          break;
-        }
-      }
-
-      if (hasConsecutiveSlots) {
-        validSlots.push(slot);
-      }
-    });
-  });
-
-  return validSlots;
-};
-
 const generateTimeSlots = (
   startTime: string,
   endTime: string,
@@ -248,6 +191,62 @@ const generateAvailableSlots = (
   return slots;
 };
 
+const filterSlotsByServiceDuration = (
+  slots: AvailableSlot[],
+  service: Service,
+  bookedSlots: { date: string; time: string }[]): AvailableSlot[] => {
+  if (!service.duration) {
+    return slots;
+  }
+  
+  const normalizeTime = (time: string): string => {
+    const trimmed = time.trim();
+    if (trimmed.length === 4 && !trimmed.includes(":")) {
+      return `${trimmed.slice(0, 2)}:${trimmed.slice(2)}`;
+    }
+    return trimmed;
+  };
+
+  const normalizeDate = (date: string): string => {
+    return date.trim();
+  };
+
+  const bookedSet = new Set(
+    bookedSlots.map((slot) => {
+      const date = normalizeDate(slot.date);
+      const time = normalizeTime(slot.time);
+      return `${date}-${time}`;
+    })
+  );
+
+  let durationMinutes = 30;
+  if (service.durationUnit === "hour") {
+    durationMinutes = service.duration * 60;
+  } else {
+    durationMinutes = service.duration;
+  }
+
+  return slots.filter((slot) => {
+    const slotDate = new Date(slot.dateTime);
+    const serviceEnd = new Date(slotDate);
+    serviceEnd.setMinutes(serviceEnd.getMinutes() + durationMinutes);
+
+    const currentSlot = new Date(slotDate);
+    const slotDuration = 30;
+    const requiredSlots: string[] = [];
+
+    while (currentSlot < serviceEnd) {
+      const dateStr = format(slotDate, "yyyy-MM-dd");
+      const timeStr = format(currentSlot, "HH:mm");
+      const slotKey = `${normalizeDate(dateStr)}-${normalizeTime(timeStr)}`;
+      requiredSlots.push(slotKey);
+      currentSlot.setMinutes(currentSlot.getMinutes() + slotDuration);
+    }
+
+    return requiredSlots.every((slotKey) => !bookedSet.has(slotKey));
+  });
+};
+
 export const processAvailability = (
   availability: Availability,
   service: Service,
@@ -272,7 +271,7 @@ export const processAvailability = (
   
   slots = removeBookedAppointments(slots, bookedSlots);
   
-  slots = filterSlotsByServiceDuration(slots, service);
+  slots = filterSlotsByServiceDuration(slots, service, bookedSlots);
   
   slots.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
