@@ -579,5 +579,95 @@ describe("availability-processor", () => {
         expect(currTime).toBeGreaterThanOrEqual(prevTime);
       }
     });
+
+    it("deve permitir agendamento de serviço de 1h às 19h quando disponibilidade é 18h-20h, mesmo que termine após o horário", () => {
+      const service1hour: Service = {
+        id: "service-1h",
+        name: "Serviço 1 Hora",
+        color: "#F4A69F",
+        duration: 1,
+        durationUnit: "hour",
+        advanceDays: 1,
+      };
+
+      const availability: Availability = {
+        userId: "user-1",
+        schedule: [
+          { day: "Segunda-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Terça-feira", enabled: true, start: "18:00", end: "20:00" },
+          { day: "Quarta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Quinta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sexta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sábado", enabled: false, start: "09:00", end: "14:00" },
+          { day: "Domingo", enabled: false, start: "09:00", end: "14:00" },
+        ],
+        holidaysEnabled: false,
+        holidays: [],
+      };
+
+      const baseDate = new Date("2024-01-15");
+      const tercaDate = getNextTuesday(baseDate);
+      const tercaDateStr = format(tercaDate, "yyyy-MM-dd");
+
+      const result = processAvailability(
+        availability,
+        service1hour,
+        tercaDate,
+        tercaDate,
+        []
+      );
+
+      const tercaSlots = result.availableSlots.filter(
+        (slot) => slot.date === tercaDateStr
+      );
+
+      const slot19h = tercaSlots.find((s) => s.time === "19:00");
+      expect(slot19h).toBeDefined();
+    });
+
+    it("deve permitir agendamento de serviço de 1h às 19h quando disponibilidade é 18h-20h", () => {
+      const service1hour: Service = {
+        id: "service-1h",
+        name: "Serviço 1 Hora",
+        color: "#F4A69F",
+        duration: 1,
+        durationUnit: "hour",
+        advanceDays: 1,
+      };
+
+      const availability: Availability = {
+        userId: "user-1",
+        schedule: [
+          { day: "Segunda-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Terça-feira", enabled: true, start: "18:00", end: "20:00" },
+          { day: "Quarta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Quinta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sexta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sábado", enabled: false, start: "09:00", end: "14:00" },
+          { day: "Domingo", enabled: false, start: "09:00", end: "14:00" },
+        ],
+        holidaysEnabled: false,
+        holidays: [],
+      };
+
+      const baseDate = new Date("2024-01-15");
+      const tercaDate = getNextTuesday(baseDate);
+      const tercaDateStr = format(tercaDate, "yyyy-MM-dd");
+
+      const result = processAvailability(
+        availability,
+        service1hour,
+        tercaDate,
+        tercaDate,
+        []
+      );
+
+      const tercaSlots = result.availableSlots.filter(
+        (slot) => slot.date === tercaDateStr
+      );
+
+      const slot19h = tercaSlots.find((s) => s.time === "19:00");
+      expect(slot19h).toBeDefined();
+    });
   });
 });
