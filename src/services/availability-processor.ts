@@ -113,6 +113,63 @@ const removeBookedAppointments = (
   });
 };
 
+const filterSlotsByServiceDuration = (
+  slots: AvailableSlot[],
+  service: Service
+): AvailableSlot[] => {
+  if (!service.duration) {
+    return slots;
+  }
+
+  let requiredSlots = 1;
+  if (service.durationUnit === "hour") {
+    requiredSlots = Math.ceil((service.duration * 60) / 30);
+  } else {
+    requiredSlots = Math.ceil(service.duration / 30);
+  }
+
+  if (requiredSlots <= 1) {
+    return slots;
+  }
+
+  const slotsByDate = new Map<string, AvailableSlot[]>();
+  slots.forEach((slot) => {
+    if (!slotsByDate.has(slot.date)) {
+      slotsByDate.set(slot.date, []);
+    }
+    slotsByDate.get(slot.date)!.push(slot);
+  });
+
+  const validSlots: AvailableSlot[] = [];
+
+  slotsByDate.forEach((dateSlots) => {
+    dateSlots.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+
+    const availableTimesSet = new Set(dateSlots.map((s) => s.time));
+
+    dateSlots.forEach((slot) => {
+      let hasConsecutiveSlots = true;
+
+      for (let i = 0; i < requiredSlots; i++) {
+        const expectedTime = new Date(slot.dateTime);
+        expectedTime.setMinutes(expectedTime.getMinutes() + i * 30);
+        const expectedTimeStr = format(expectedTime, "HH:mm");
+
+        if (!availableTimesSet.has(expectedTimeStr)) {
+          hasConsecutiveSlots = false;
+          break;
+        }
+      }
+
+      if (hasConsecutiveSlots) {
+        validSlots.push(slot);
+      }
+    });
+  });
+
+  return validSlots;
+};
+
 const generateTimeSlots = (
   startTime: string,
   endTime: string,
@@ -214,6 +271,8 @@ export const processAvailability = (
   slots = applyAdvanceDays(slots, service.advanceDays);
   
   slots = removeBookedAppointments(slots, bookedSlots);
+  
+  slots = filterSlotsByServiceDuration(slots, service);
   
   slots.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
