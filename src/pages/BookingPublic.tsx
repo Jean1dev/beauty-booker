@@ -56,7 +56,7 @@ const BookingPublic = () => {
     }
 
     const startDate = new Date();
-    const endDate = addDays(new Date(), 30);
+    const endDate = addDays(new Date(), 45);
     
     return processAvailability(availability, selectedService, startDate, endDate, bookedSlots, excludedDays);
   }, [selectedService, availability, bookedSlots, excludedDays]);
