@@ -251,7 +251,7 @@ export const processAvailability = (
   availability: Availability,
   service: Service,
   startDate: Date = new Date(),
-  endDate: Date = addDays(new Date(), 30),
+  endDate: Date = addDays(new Date(), 45),
   bookedSlots: { date: string; time: string }[] = [],
   excludedDays: string[] = []
 ): ProcessedAvailability => {
