@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Appointment, cancelAppointment } from "@/services/appointments";
 import {
   Sheet,
@@ -44,6 +44,18 @@ export const AppointmentDetailsSheet = ({
   const { toast } = useToast();
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isSafariMobile, setIsSafariMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") {
+      setIsSafariMobile(false);
+      return;
+    }
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
+    setIsSafariMobile(!!(isIOS && isSafari));
+  }, []);
 
   if (!appointment) {
     return (
@@ -120,21 +132,27 @@ export const AppointmentDetailsSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md">
-        <SheetHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: serviceColor }}
-            />
-            <SheetTitle className="text-2xl">{appointment.serviceName}</SheetTitle>
-          </div>
-          <SheetDescription className="text-base">
-            Detalhes do agendamento
-          </SheetDescription>
-        </SheetHeader>
+      <SheetContent className="sm:max-w-md flex flex-col max-h-[100dvh] sm:max-h-none p-0">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 pr-12"
+          style={{
+            paddingTop: `max(env(safe-area-inset-top), ${isSafariMobile ? "3.5rem" : "1.5rem"})`,
+          }}
+        >
+          <SheetHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: serviceColor }}
+              />
+              <SheetTitle className="text-2xl">{appointment.serviceName}</SheetTitle>
+            </div>
+            <SheetDescription className="text-base">
+              Detalhes do agendamento
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-6">
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-muted">
@@ -262,6 +280,7 @@ export const AppointmentDetailsSheet = ({
               </AlertDialog>
             </>
           )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>
