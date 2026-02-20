@@ -40,12 +40,17 @@ export class SendAppointmentNotificationUseCase {
     return `${dayOfWeek}, ${day} de ${month} às ${hours}:${minutes}`;
   }
 
-  private static formatPhoneNumber(phone: string): string {
+  private static formatPhoneForSms(phone: string): string | null {
     const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.length === 11 && cleaned.startsWith("0")) {
-      return cleaned.substring(1);
+    if (!cleaned || cleaned.length < 10) return null;
+    let digits = cleaned;
+    if (digits.length === 11 && digits.startsWith("0")) {
+      digits = digits.substring(1);
     }
-    return cleaned;
+    if (!digits.startsWith("55")) {
+      digits = "55" + digits;
+    }
+    return digits;
   }
 
   private static async getUserEmail(userId: string): Promise<string | null> {
@@ -58,10 +63,21 @@ export class SendAppointmentNotificationUseCase {
     }
   }
 
-  private static createSmsDescription(
-    serviceName: string
+  private static readonly PROFESSIONAL_PHONE = "5548991477211";
+
+  private static createSmsToProfessional(
+    serviceName: string,
+    formattedDate: string,
+    clientName: string
   ): string {
-    return `Novo agendamento: ${serviceName} `;
+    return `Novo agendamento: ${serviceName} - ${clientName} - ${formattedDate}. Beauty Booker`;
+  }
+
+  private static createSmsToClient(
+    serviceName: string,
+    formattedDate: string
+  ): string {
+    return `Seu agendamento: ${serviceName} - ${formattedDate}. Beauty Booker`;
   }
 
   private static async sendEmailNotification(
@@ -84,20 +100,45 @@ export class SendAppointmentNotificationUseCase {
     logger.info(`Email de agendamento enviado para ${userEmail}`);
   }
 
-  private static async sendSmsNotification(
+  private static async sendSmsToProfessional(
     appointment: AppointmentData,
+    formattedDate: string
   ): Promise<void> {
-    const formattedPhone = this.formatPhoneNumber("+55 48 9914-7211");
-    const smsDescription = this.createSmsDescription(
-      appointment.serviceName
+    const message = this.createSmsToProfessional(
+      appointment.serviceName,
+      formattedDate,
+      appointment.clientName
     );
-
     await SmsService.sendSms({
-      desc: smsDescription,
+      desc: message,
+      recipients: [this.PROFESSIONAL_PHONE],
+    });
+    logger.info(`SMS de novo agendamento enviado para ${this.PROFESSIONAL_PHONE}`);
+  }
+
+  private static async sendSmsToClient(
+    appointment: AppointmentData,
+    formattedDate: string
+  ): Promise<void> {
+    const clientPhone = appointment.clientPhone?.trim();
+    if (!clientPhone) {
+      logger.warn("Agendamento sem telefone do cliente, SMS não enviado");
+      return;
+    }
+    const formattedPhone = this.formatPhoneForSms(clientPhone);
+    if (!formattedPhone) {
+      logger.warn(`Telefone inválido para SMS: ${clientPhone}`);
+      return;
+    }
+    const message = this.createSmsToClient(
+      appointment.serviceName,
+      formattedDate
+    );
+    await SmsService.sendSms({
+      desc: message,
       recipients: [formattedPhone],
     });
-
-    logger.info(`SMS de agendamento enviado para ${formattedPhone}`);
+    logger.info(`SMS de confirmação enviado para o cliente ${formattedPhone}`);
   }
 
   static async execute(
@@ -105,18 +146,18 @@ export class SendAppointmentNotificationUseCase {
     appointment: AppointmentData
   ): Promise<void> {
     try {
-      const userEmail = await this.getUserEmail(userId);
-
-      if (!userEmail) {
-        logger.warn(`Usuário ${userId} não tem email cadastrado`);
-        return;
-      }
-
       const appointmentDate = appointment.dateTime.toDate();
       const formattedDate = this.formatDateToBrazilian(appointmentDate);
 
-      await this.sendEmailNotification(userEmail, appointment, formattedDate);
-      await this.sendSmsNotification(appointment);
+      const userEmail = await this.getUserEmail(userId);
+      if (userEmail) {
+        await this.sendEmailNotification(userEmail, appointment, formattedDate);
+      } else {
+        logger.warn(`Usuário ${userId} não tem email cadastrado`);
+      }
+
+      await this.sendSmsToProfessional(appointment, formattedDate);
+      await this.sendSmsToClient(appointment, formattedDate);
     } catch (error: unknown) {
       logger.error("Erro ao enviar notificação de agendamento:", error);
     }
