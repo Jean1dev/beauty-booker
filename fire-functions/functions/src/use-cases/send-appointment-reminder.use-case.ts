@@ -38,13 +38,29 @@ function formatPhoneForSms(phone: string): string | null {
   return digits;
 }
 
+const SAO_PAULO_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+function getTargetDayRangeSaoPaulo(): {start: Date; end: Date} {
+  const now = new Date();
+  const nowSaoPaulo = new Date(now.getTime() - SAO_PAULO_UTC_OFFSET_MS);
+  const y = nowSaoPaulo.getUTCFullYear();
+  const m = nowSaoPaulo.getUTCMonth();
+  const d = nowSaoPaulo.getUTCDate();
+  const targetMidnightUtc = new Date(Date.UTC(y, m, d + 2, 0, 0, 0, 0));
+  const targetY = targetMidnightUtc.getUTCFullYear();
+  const targetM = targetMidnightUtc.getUTCMonth();
+  const targetD = targetMidnightUtc.getUTCDate();
+  const start = new Date(Date.UTC(targetY, targetM, targetD, 3, 0, 0, 0));
+  const end = new Date(Date.UTC(targetY, targetM, targetD + 1, 2, 59, 59, 999));
+  return {start, end};
+}
+
 export class SendAppointmentReminderUseCase {
   static async execute(): Promise<void> {
-    const now = new Date();
-    const targetDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 0, 0, 0, 0);
-    const endOfTargetDay = new Date(targetDay.getTime() + 24 * 60 * 60 * 1000 - 1);
+    const {start: startOfTargetDay, end: endOfTargetDay} =
+      getTargetDayRangeSaoPaulo();
 
-    const startTs = admin.firestore.Timestamp.fromDate(targetDay);
+    const startTs = admin.firestore.Timestamp.fromDate(startOfTargetDay);
     const endTs = admin.firestore.Timestamp.fromDate(endOfTargetDay);
 
     const appointments = await AppointmentRepository.getAppointmentsBetween(
