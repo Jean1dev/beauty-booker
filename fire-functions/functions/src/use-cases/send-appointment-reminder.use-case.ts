@@ -2,6 +2,10 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {AppointmentRepository} from "../services/appointment.repository";
 import {SmsService} from "../services/sms.service";
+import {
+  formatDateToBrazilian,
+  formatPhoneForSms,
+} from "../utils/brazil-format";
 
 interface AppointmentDoc {
   id: string;
@@ -10,32 +14,6 @@ interface AppointmentDoc {
   clientName: string;
   clientPhone: string;
   dateTime: admin.firestore.Timestamp;
-}
-
-function formatDateToBrazilian(date: Date): string {
-  const daysOfWeek = [
-    "domingo", "segunda-feira", "terça-feira", "quarta-feira",
-    "quinta-feira", "sexta-feira", "sábado",
-  ];
-  const months = [
-    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-  ];
-  const dayOfWeek = daysOfWeek[date.getDay()];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  return `${dayOfWeek}, ${day} de ${month} às ${hours}:${minutes}`;
-}
-
-function formatPhoneForSms(phone: string): string | null {
-  const cleaned = phone.replace(/\D/g, "");
-  if (!cleaned || cleaned.length < 10) return null;
-  let digits = cleaned;
-  if (digits.length === 11 && digits.startsWith("0")) digits = digits.substring(1);
-  if (!digits.startsWith("55")) digits = "55" + digits;
-  return digits;
 }
 
 const SAO_PAULO_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;

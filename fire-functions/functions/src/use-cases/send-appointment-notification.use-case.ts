@@ -1,58 +1,14 @@
 import {EmailService} from "../services/email.service";
 import {SmsService} from "../services/sms.service";
 import {AppointmentData} from "../types/google-calendar.types";
+import {
+  formatDateToBrazilian,
+  formatPhoneForSms,
+} from "../utils/brazil-format";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 
 export class SendAppointmentNotificationUseCase {
-  private static formatDateToBrazilian(date: Date): string {
-    const daysOfWeek = [
-      "domingo",
-      "segunda-feira",
-      "terça-feira",
-      "quarta-feira",
-      "quinta-feira",
-      "sexta-feira",
-      "sábado",
-    ];
-
-    const months = [
-      "janeiro",
-      "fevereiro",
-      "março",
-      "abril",
-      "maio",
-      "junho",
-      "julho",
-      "agosto",
-      "setembro",
-      "outubro",
-      "novembro",
-      "dezembro",
-    ];
-
-    const dayOfWeek = daysOfWeek[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-
-    return `${dayOfWeek}, ${day} de ${month} às ${hours}:${minutes}`;
-  }
-
-  private static formatPhoneForSms(phone: string): string | null {
-    const cleaned = phone.replace(/\D/g, "");
-    if (!cleaned || cleaned.length < 10) return null;
-    let digits = cleaned;
-    if (digits.length === 11 && digits.startsWith("0")) {
-      digits = digits.substring(1);
-    }
-    if (!digits.startsWith("55")) {
-      digits = "55" + digits;
-    }
-    return digits;
-  }
-
   private static async getUserEmail(userId: string): Promise<string | null> {
     try {
       const userRecord = await admin.auth().getUser(userId);
@@ -125,7 +81,7 @@ export class SendAppointmentNotificationUseCase {
       logger.warn("Agendamento sem telefone do cliente, SMS não enviado");
       return;
     }
-    const formattedPhone = this.formatPhoneForSms(clientPhone);
+    const formattedPhone = formatPhoneForSms(clientPhone);
     if (!formattedPhone) {
       logger.warn(`Telefone inválido para SMS: ${clientPhone}`);
       return;
@@ -147,7 +103,7 @@ export class SendAppointmentNotificationUseCase {
   ): Promise<void> {
     try {
       const appointmentDate = appointment.dateTime.toDate();
-      const formattedDate = this.formatDateToBrazilian(appointmentDate);
+      const formattedDate = formatDateToBrazilian(appointmentDate);
 
       const userEmail = await this.getUserEmail(userId);
       if (userEmail) {
