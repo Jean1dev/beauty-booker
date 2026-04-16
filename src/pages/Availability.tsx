@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -29,18 +28,14 @@ const Availability = () => {
     updateHolidays,
     setHolidaysEnabled,
     setHolidaysCountry,
-  } = useAvailability({
-    userId: userData?.uid || null,
-  });
-  
+  } = useAvailability({ userId: userData?.uid || null });
+
   const [localSchedule, setLocalSchedule] = useState<DaySchedule[]>(schedule);
   const [localHolidays, setLocalHolidays] = useState<HolidayConfig[]>(holidays);
   const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
 
   useEffect(() => {
-    if (schedule.length > 0) {
-      setLocalSchedule(schedule);
-    }
+    if (schedule.length > 0) setLocalSchedule(schedule);
   }, [schedule]);
 
   useEffect(() => {
@@ -72,15 +67,12 @@ const Availability = () => {
         }
       }
     }
-
     try {
       await updateSchedule(localSchedule);
-      if (holidaysEnabled) {
-        await updateHolidays(localHolidays, holidaysEnabled, holidaysCountry);
-      }
+      if (holidaysEnabled) await updateHolidays(localHolidays, holidaysEnabled, holidaysCountry);
       trackAvailabilitySaved();
       toast.success("Disponibilidade salva com sucesso!");
-    } catch (error) {
+    } catch {
       toast.error("Erro ao salvar disponibilidade");
     }
   };
@@ -97,15 +89,14 @@ const Availability = () => {
         setIsLoadingHolidays(true);
         try {
           const apiHolidays = await getHolidaysForCurrentAndNextYear();
-          const holidayConfigs: HolidayConfig[] = apiHolidays.map((holiday) => ({
-            date: holiday.date,
-            name: holiday.name,
+          const holidayConfigs: HolidayConfig[] = apiHolidays.map((h) => ({
+            date: h.date,
+            name: h.name,
             enabled: true,
           }));
           setLocalHolidays(holidayConfigs);
           await updateHolidays(holidayConfigs, enabled, holidaysCountry);
-        } catch (error) {
-          console.error("Erro ao carregar feriados:", error);
+        } catch {
           toast.error("Erro ao carregar feriados");
         } finally {
           setIsLoadingHolidays(false);
@@ -114,146 +105,131 @@ const Availability = () => {
         await updateHolidays(localHolidays, enabled, holidaysCountry);
       }
       setHolidaysEnabled(enabled);
-    } catch (error) {
-      console.error("Erro ao atualizar feriados:", error);
+    } catch {
       toast.error("Erro ao atualizar configuração de feriados");
     }
   };
 
   const getNextOccurrence = (dateString: string): string => {
     try {
-      const date = parseISO(dateString);
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const holidayYear = date.getFullYear();
-      
-      if (holidayYear >= currentYear) {
-        return format(date, "d MMM yyyy", { locale: ptBR });
-      }
-      return dateString;
+      return format(parseISO(dateString), "d MMM yyyy", { locale: ptBR });
     } catch {
       return dateString;
     }
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 animate-fade-in">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background animate-fade-in">
+      <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate("/dashboard")}
-            className="shadow-soft"
+            className="border-border text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Disponibilidade
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Configure seus horários de trabalho
-            </p>
+            <h1 className="page-title">Disponibilidade</h1>
+            <p className="page-subtitle">Configure seus horários de trabalho</p>
           </div>
         </div>
 
-        {/* Schedule Cards */}
-        <Card className="shadow-medium">
-          <CardHeader className="gradient-primary text-primary-foreground rounded-t-2xl">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Horários da Semana
-            </CardTitle>
-            <CardDescription className="text-primary-foreground/80">
-              Defina quando você está disponível para atendimentos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-4">
+        {/* Weekly Schedule */}
+        <div className="bg-card rounded-[20px] border border-border shadow-soft overflow-hidden">
+          <div className="px-6 py-5 border-b border-border flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary" />
+            <div>
+              <h2 className="font-medium text-foreground text-sm">Horários da Semana</h2>
+              <p className="text-xs text-muted-foreground">Defina quando você está disponível para atendimentos</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-3">
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-sm text-muted-foreground">
                 Carregando disponibilidade...
               </div>
             ) : (
               localSchedule.map((day, index) => (
-              <div
-                key={day.day}
-                className={`p-4 rounded-xl border transition-all ${
-                  day.enabled
-                    ? "bg-secondary/50 border-primary/20"
-                    : "bg-muted/30 border-border"
-                }`}
-              >
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="flex items-center gap-3 md:w-48">
-                    <Switch
-                      checked={day.enabled}
-                      onCheckedChange={() => handleToggleDay(index)}
-                    />
-                    <Label className="font-medium cursor-pointer" htmlFor={`day-${index}`}>
-                      {day.day}
-                    </Label>
+                <div
+                  key={day.day}
+                  className={`p-4 rounded-xl border transition-all ${
+                    day.enabled
+                      ? "bg-primary/5 border-primary/20"
+                      : "bg-secondary/50 border-border"
+                  }`}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="flex items-center gap-3 md:w-44">
+                      <Switch
+                        checked={day.enabled}
+                        onCheckedChange={() => handleToggleDay(index)}
+                      />
+                      <Label className="text-sm font-medium cursor-pointer">{day.day}</Label>
+                    </div>
+
+                    {day.enabled && (
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
+                            Início
+                          </Label>
+                          <Input
+                            type="time"
+                            value={day.start}
+                            onChange={(e) => handleTimeChange(index, "start", e.target.value)}
+                            className="w-full rounded-xl border-border bg-card text-sm"
+                          />
+                        </div>
+                        <span className="text-muted-foreground text-sm pt-5">→</span>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
+                            Fim
+                          </Label>
+                          <Input
+                            type="time"
+                            value={day.end}
+                            onChange={(e) => handleTimeChange(index, "end", e.target.value)}
+                            className="w-full rounded-xl border-border bg-card text-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {!day.enabled && (
+                      <span className="text-xs text-muted-foreground italic">Indisponível</span>
+                    )}
                   </div>
-
-                  {day.enabled && (
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">Início</Label>
-                        <Input
-                          type="time"
-                          value={day.start}
-                          onChange={(e) => handleTimeChange(index, "start", e.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                      <span className="text-muted-foreground pt-6">até</span>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">Fim</Label>
-                        <Input
-                          type="time"
-                          value={day.end}
-                          onChange={(e) => handleTimeChange(index, "end", e.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {!day.enabled && (
-                    <div className="flex-1 text-muted-foreground italic">
-                      Indisponível
-                    </div>
-                  )}
                 </div>
-              </div>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="shadow-medium">
-          <CardHeader className="gradient-primary text-primary-foreground rounded-t-2xl">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Feriados
-            </CardTitle>
-            <CardDescription className="text-primary-foreground/80">
-              O sistema marcará você como indisponível nos feriados selecionados
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between gap-4 pb-4 border-b">
-              <div className="flex items-center gap-3 flex-1">
-                <Label htmlFor="country-select" className="text-sm font-medium">
-                  País para feriados
-                </Label>
+        {/* Holidays */}
+        <div className="bg-card rounded-[20px] border border-border shadow-soft overflow-hidden">
+          <div className="px-6 py-5 border-b border-border flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            <div>
+              <h2 className="font-medium text-foreground text-sm">Feriados</h2>
+              <p className="text-xs text-muted-foreground">
+                O sistema marcará você como indisponível nos feriados selecionados
+              </p>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between gap-4 pb-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <Label className="text-sm font-medium">País</Label>
                 <Select
                   value={holidaysCountry}
                   onValueChange={(value) => setHolidaysCountry(value)}
                   disabled={!holidaysEnabled}
                 >
-                  <SelectTrigger id="country-select" className="w-48">
+                  <SelectTrigger className="w-36 rounded-xl border-border text-sm h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -262,32 +238,27 @@ const Availability = () => {
                 </Select>
               </div>
               <div className="flex items-center gap-3">
-                <Switch
-                  checked={holidaysEnabled}
-                  onCheckedChange={handleToggleHolidaysEnabled}
-                />
-                <Label htmlFor="holidays-toggle" className="text-sm font-medium cursor-pointer">
-                  Ativar feriados
-                </Label>
+                <Switch checked={holidaysEnabled} onCheckedChange={handleToggleHolidaysEnabled} />
+                <Label className="text-sm font-medium cursor-pointer">Ativar feriados</Label>
               </div>
             </div>
 
             {isLoadingHolidays ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-sm text-muted-foreground">
                 Carregando feriados...
               </div>
             ) : holidaysEnabled && localHolidays.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                 {localHolidays.map((holiday, index) => (
                   <div
                     key={`${holiday.date}-${index}`}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-secondary/30"
+                    className="flex items-center justify-between p-3 rounded-xl border border-border bg-secondary/30"
                   >
-                    <div className="flex-1">
-                      <div className="font-medium">{holiday.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Próximo: {getNextOccurrence(holiday.date)}
-                      </div>
+                    <div>
+                      <p className="text-sm font-medium">{holiday.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getNextOccurrence(holiday.date)}
+                      </p>
                     </div>
                     <Switch
                       checked={holiday.enabled}
@@ -297,21 +268,22 @@ const Availability = () => {
                 ))}
               </div>
             ) : holidaysEnabled ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-sm text-muted-foreground">
                 Nenhum feriado encontrado
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-sm text-muted-foreground">
                 Ative os feriados para começar
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <Button
           onClick={handleSave}
           disabled={isLoading || isLoadingHolidays}
-          className="w-full gradient-primary shadow-medium hover:opacity-90 transition-smooth h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          size="lg"
+          className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading || isLoadingHolidays ? "Salvando..." : "Salvar Disponibilidade"}
         </Button>

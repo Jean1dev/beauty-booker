@@ -1,144 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Elegant beauty theme - coral rose palette */
-    --background: 30 40% 98%;
-    --foreground: 20 15% 15%;
+    /* BeautyBook Design System — Light */
+    --background: 60 9% 98%;          /* neutral-50  #FAFAF9 */
+    --foreground: 30 11% 7%;           /* neutral-900 #141210 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 20 15% 15%;
+    --card: 0 0% 100%;                 /* white */
+    --card-foreground: 30 11% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 15% 15%;
+    --popover-foreground: 30 11% 7%;
 
-    --primary: 12 75% 78%;
-    --primary-foreground: 20 15% 15%;
+    --primary: 2 48% 56%;             /* rose-500   #C45C58 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 35% 92%;
-    --secondary-foreground: 20 15% 15%;
+    --secondary: 40 11% 95%;          /* neutral-100 #F4F3F1 */
+    --secondary-foreground: 30 11% 7%;
 
-    --muted: 30 25% 90%;
-    --muted-foreground: 20 8% 45%;
+    --muted: 40 11% 95%;
+    --muted-foreground: 38 7% 42%;    /* neutral-500 #736F65 */
 
-    --accent: 40 70% 85%;
-    --accent-foreground: 20 15% 15%;
+    --accent: 44 54% 54%;             /* gold-400    #C9A84C */
+    --accent-foreground: 0 0% 100%;
 
-    --success: 150 40% 75%;
-    --success-foreground: 20 15% 15%;
+    --success: 132 38% 46%;
+    --success-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 65%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 12 75% 78%;
+    --border: 40 10% 88%;             /* neutral-200 #E8E6E1 */
+    --input: 40 10% 88%;
+    --ring: 2 48% 56%;
 
     --radius: 0.75rem;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(12 75% 78%) 0%, hsl(25 70% 82%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(40 70% 85%) 0%, hsl(50 65% 88%) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(30 40% 98%) 0%, hsl(20 35% 96%) 100%);
-
     /* Shadows */
-    --shadow-soft: 0 2px 8px -2px hsl(12 75% 78% / 0.15);
-    --shadow-medium: 0 4px 16px -4px hsl(12 75% 78% / 0.2);
-    --shadow-strong: 0 8px 24px -6px hsl(12 75% 78% / 0.25);
-
-    /* Transitions */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.04);
+    --shadow-accent: 0 8px 24px rgba(196, 92, 88, 0.25);
   }
 
   .dark {
-    --background: 20 15% 12%;
-    --foreground: 30 40% 95%;
+    /* BeautyBook Design System — Dark */
+    --background: 30 11% 7%;          /* neutral-900 #141210 */
+    --foreground: 30 29% 96%;         /* #F5F2EE */
 
-    --card: 20 15% 15%;
-    --card-foreground: 30 40% 95%;
+    --card: 30 6% 13%;                /* neutral-800 #242220 */
+    --card-foreground: 30 29% 96%;
 
-    --popover: 20 15% 15%;
-    --popover-foreground: 30 40% 95%;
+    --popover: 30 6% 13%;
+    --popover-foreground: 30 29% 96%;
 
-    --primary: 12 75% 68%;
+    --primary: 3 55% 66%;             /* rose-400    #D97E7A */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 20 15% 22%;
-    --secondary-foreground: 30 40% 95%;
+    --secondary: 30 6% 20%;           /* neutral-700 #363330 */
+    --secondary-foreground: 30 29% 96%;
 
-    --muted: 20 15% 20%;
-    --muted-foreground: 30 20% 65%;
+    --muted: 30 6% 20%;
+    --muted-foreground: 38 7% 60%;    /* neutral-400 #A09C91 */
 
-    --accent: 40 60% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 46 67% 65%;             /* gold-300    #E2C56A */
+    --accent-foreground: 30 11% 7%;
 
-    --success: 150 40% 55%;
+    --success: 130 40% 55%;
     --success-foreground: 0 0% 100%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 20 15% 25%;
-    --input: 20 15% 25%;
-    --ring: 12 75% 68%;
+    --border: 30 6% 20%;              /* neutral-700 */
+    --input: 30 6% 20%;
+    --ring: 3 55% 66%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(12 75% 68%) 0%, hsl(25 70% 72%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(40 60% 45%) 0%, hsl(50 55% 48%) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(20 15% 12%) 0%, hsl(20 15% 15%) 100%);
-
-    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
-    --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
-    --shadow-strong: 0 8px 24px -6px hsl(0 0% 0% / 0.5);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+    --shadow-accent: 0 8px 24px rgba(217, 126, 122, 0.2);
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(30 35% 96%) 100%);
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
   }
 }
 
 @layer utilities {
-  .gradient-primary {
-    background: var(--gradient-primary);
+  .font-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
   }
 
-  .gradient-accent {
-    background: var(--gradient-accent);
+  .shadow-accent {
+    box-shadow: var(--shadow-accent);
   }
 
   .shadow-soft {
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--shadow-sm);
   }
 
   .shadow-medium {
-    box-shadow: var(--shadow-medium);
+    box-shadow: var(--shadow-md);
   }
 
   .shadow-strong {
-    box-shadow: var(--shadow-strong);
+    box-shadow: var(--shadow-lg);
   }
 
-  .transition-smooth {
-    transition: var(--transition-smooth);
+  .gradient-primary {
+    background: hsl(var(--primary));
+  }
+
+  .gradient-accent {
+    background: hsl(var(--accent));
   }
 
   .hover-lift {
-    @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-medium;
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-medium;
+  }
+}
+
+@layer components {
+  .section-label {
+    @apply text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground pb-3 border-b border-border mb-6;
+  }
+
+  .page-header {
+    @apply flex items-center gap-4 mb-8;
+  }
+
+  .page-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    @apply text-3xl font-normal text-foreground;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-muted-foreground mt-1;
   }
 }
