@@ -40,5 +40,19 @@ export class AppointmentRepository {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
   }
+
+  static async getAppointmentsBetween(
+    startInclusive: admin.firestore.Timestamp,
+    endInclusive: admin.firestore.Timestamp
+  ): Promise<(admin.firestore.DocumentData & { id: string })[]> {
+    const snapshot = await admin.firestore()
+      .collection(this.COLLECTION)
+      .where("status", "==", "pending")
+      .where("dateTime", ">=", startInclusive)
+      .where("dateTime", "<=", endInclusive)
+      .get();
+
+    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+  }
 }
 
