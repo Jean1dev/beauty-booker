@@ -1,5 +1,4 @@
-import { Sparkles, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronRight } from "lucide-react";
 import { Service } from "@/services/user-services";
 
 interface ServiceSelectionStepProps {
@@ -14,19 +13,21 @@ export const ServiceSelectionStep = ({
   getDurationText,
 }: ServiceSelectionStepProps) => {
   return (
-    <Card className="shadow-medium animate-slide-up">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
+    <div className="bg-card rounded-[20px] border border-border shadow-soft overflow-hidden animate-slide-up">
+      <div className="px-6 py-5 border-b border-border">
+        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground mb-1">
+          Passo 1
+        </p>
+        <h2 className="font-display text-2xl font-normal text-foreground">
           Escolha um Serviço
-        </CardTitle>
-        <CardDescription>
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Selecione o serviço que deseja agendar
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        </p>
+      </div>
+      <div className="p-4 space-y-2">
         {services.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
+          <p className="text-center text-sm text-muted-foreground py-10">
             Nenhum serviço disponível no momento
           </p>
         ) : (
@@ -34,30 +35,29 @@ export const ServiceSelectionStep = ({
             <button
               key={service.id}
               onClick={() => onSelect(service)}
-              className="w-full p-4 rounded-xl border border-border hover:border-primary/50 bg-card hover:bg-secondary/50 transition-all text-left shadow-soft hover:shadow-medium group"
+              className="w-full p-4 rounded-xl border border-border hover:border-primary/40 bg-card hover:bg-secondary/30 transition-all text-left group hover:shadow-soft hover:-translate-y-px duration-200"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-4 h-4 rounded-full"
+                    className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: service.color }}
                   />
                   <div>
-                    <h3 className="font-semibold group-hover:text-primary transition-colors">
+                    <h3 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                       {service.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Duração: {getDurationText(service.duration, service.durationUnit)}
                     </p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
             </button>
           ))
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
-

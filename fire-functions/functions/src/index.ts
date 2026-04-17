@@ -2,6 +2,7 @@ import "./local-env";
 import {setGlobalOptions} from "firebase-functions";
 import {onRequest, onCall} from "firebase-functions/v2/https";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {GetGoogleCalendarAuthUrlUseCase} from
@@ -20,6 +21,8 @@ import {SendAppointmentNotificationUseCase} from
   "./use-cases/send-appointment-notification.use-case";
 import {CancelAppointmentUseCase} from
   "./use-cases/cancel-appointment.use-case";
+import {SendAppointmentReminderUseCase} from
+  "./use-cases/send-appointment-reminder.use-case";
 import {
   CreateCalendarEventRequest,
   AppointmentData,
@@ -169,5 +172,19 @@ export const cancelAppointment = onCall(
 
     await CancelAppointmentUseCase.execute(uid, appointmentId);
     return {success: true};
+  }
+);
+
+export const sendAppointmentReminder = onSchedule(
+  {
+    schedule: "0 8 * * *",
+    timeZone: "America/Sao_Paulo",
+  },
+  async () => {
+    try {
+      await SendAppointmentReminderUseCase.execute();
+    } catch (error: unknown) {
+      logger.error("Erro ao enviar lembretes de agendamento:", error);
+    }
   }
 );
