@@ -194,7 +194,9 @@ const generateAvailableSlots = (
 const filterSlotsByServiceDuration = (
   slots: AvailableSlot[],
   service: Service,
-  bookedSlots: { date: string; time: string }[]): AvailableSlot[] => {
+  bookedSlots: { date: string; time: string }[],
+  allAvailableSlotKeys: Set<string>
+): AvailableSlot[] => {
   if (!service.duration) {
     return slots;
   }
@@ -243,7 +245,7 @@ const filterSlotsByServiceDuration = (
       currentSlot.setMinutes(currentSlot.getMinutes() + slotDuration);
     }
 
-    return requiredSlots.every((slotKey) => !bookedSet.has(slotKey));
+    return requiredSlots.every((slotKey) => allAvailableSlotKeys.has(slotKey) && !bookedSet.has(slotKey));
   });
 };
 
@@ -268,10 +270,12 @@ export const processAvailability = (
   slots = removeExcludedDays(slots, excludedDays);
   
   slots = applyAdvanceDays(slots, service.advanceDays);
-  
+
+  const allAvailableSlotKeys = new Set(slots.map((s) => `${s.date}-${s.time}`));
+
   slots = removeBookedAppointments(slots, bookedSlots);
-  
-  slots = filterSlotsByServiceDuration(slots, service, bookedSlots);
+
+  slots = filterSlotsByServiceDuration(slots, service, bookedSlots, allAvailableSlotKeys);
   
   slots.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
