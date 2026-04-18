@@ -324,6 +324,13 @@ describe("availability-processor", () => {
     });
 
     it("deve calcular corretamente slots necessários para serviço em horas", () => {
+      // Terça-feira: 18:00-20:00. Serviço de 2h. Agendado às 19:00.
+      // - 18:00 bloqueado: precisa de 18:00, 18:30, 19:00*, 19:30 (19:00 ocupado)
+      // - 18:30 bloqueado: precisa de 18:30, 19:00*, 19:30, 20:00 (19:00 ocupado)
+      // - 19:30 DISPONÍVEL: precisa de 19:30, 20:00, 20:30, 21:00 — nenhum ocupado.
+      //   O serviço termina às 21:30 (além das 20:00 do expediente), mas isso é permitido
+      //   pela regra de negócio — o fim do expediente define quando novos slots INICIAM,
+      //   não quando o serviço precisa terminar.
       const service2hours: Service = {
         ...mockService,
         duration: 2,
@@ -347,7 +354,8 @@ describe("availability-processor", () => {
         (slot) => slot.date === "2024-01-16"
       );
 
-      expect(tercaSlots.length).toBe(0);
+      expect(tercaSlots.length).toBe(1);
+      expect(tercaSlots.find((s) => s.time === "19:30")).toBeDefined();
     });
 
     it("deve permitir serviço de 1h quando há espaço suficiente", () => {
@@ -556,6 +564,99 @@ describe("availability-processor", () => {
       expect(tercaSlots.find((s) => s.time === "18:30")).toBeDefined();
       expect(tercaSlots.find((s) => s.time === "19:00")).toBeUndefined();
       expect(tercaSlots.find((s) => s.time === "19:30")).toBeUndefined();
+    });
+
+    it("REGRA DE NEGÓCIO: deve permitir agendamento cujo término ultrapassa o fim do expediente", () => {
+      // O horário de fim do expediente define até quando novos slots podem INICIAR,
+      // não impede que o serviço se estenda além dele. Esse teste documenta esse
+      // comportamento para evitar regressão.
+      const service3h30: Service = {
+        id: "service-3h30",
+        name: "Serviço 3h30",
+        color: "#F4A69F",
+        duration: 210,
+        durationUnit: "min",
+        advanceDays: 0,
+      };
+
+      const availability: Availability = {
+        userId: "user-1",
+        schedule: [
+          { day: "Segunda-feira", enabled: true, start: "18:00", end: "19:30" },
+          { day: "Terça-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Quarta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Quinta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sexta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sábado", enabled: false, start: "09:00", end: "14:00" },
+          { day: "Domingo", enabled: false, start: "09:00", end: "14:00" },
+        ],
+        holidaysEnabled: false,
+        holidays: [],
+      };
+
+      // 2024-01-15 é segunda-feira
+      const startDate = new Date("2024-01-15");
+      const endDate = new Date("2024-01-15");
+
+      const result = processAvailability(
+        availability,
+        service3h30,
+        startDate,
+        endDate,
+        []
+      );
+
+      // Deve mostrar os slots das 18:00 e 18:30 (únicos slots gerados dentro do expediente)
+      // mesmo que o serviço de 3h30 termine às 21:30 / 22:00, bem além das 19:30
+      expect(result.availableSlots.length).toBeGreaterThan(0);
+      expect(result.availableSlots.find((s) => s.time === "18:00")).toBeDefined();
+      expect(result.availableSlots.find((s) => s.time === "18:30")).toBeDefined();
+    });
+
+    it("REGRA DE NEGÓCIO: serviço de 3h30 deve desaparecer somente quando slots estiverem ocupados", () => {
+      const service3h30: Service = {
+        id: "service-3h30",
+        name: "Serviço 3h30",
+        color: "#F4A69F",
+        duration: 210,
+        durationUnit: "min",
+        advanceDays: 0,
+      };
+
+      const availability: Availability = {
+        userId: "user-1",
+        schedule: [
+          { day: "Segunda-feira", enabled: true, start: "18:00", end: "19:30" },
+          { day: "Terça-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Quarta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Quinta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sexta-feira", enabled: false, start: "08:00", end: "18:00" },
+          { day: "Sábado", enabled: false, start: "09:00", end: "14:00" },
+          { day: "Domingo", enabled: false, start: "09:00", end: "14:00" },
+        ],
+        holidaysEnabled: false,
+        holidays: [],
+      };
+
+      const startDate = new Date("2024-01-15");
+      const endDate = new Date("2024-01-15");
+      // Ocupa um slot no meio do período necessário para o serviço de 3h30 às 18:00
+      const bookedSlots = [{ date: "2024-01-15", time: "19:00" }];
+
+      const result = processAvailability(
+        availability,
+        service3h30,
+        startDate,
+        endDate,
+        bookedSlots
+      );
+
+      // 18:00 bloqueado porque 19:00 (slot necessário) está ocupado
+      expect(result.availableSlots.find((s) => s.time === "18:00")).toBeUndefined();
+      // 18:30 ainda aparece pois 19:00 não faz parte do bloco que começa às 18:30
+      // (18:30 → 19:00 → 19:30 → 20:00 → ... → 22:00 — o slot 19:00 ocupa exatamente às 19:00)
+      // Na verdade 18:30 + 30min = 19:00, logo 19:00 É necessário para o slot das 18:30 também
+      expect(result.availableSlots.find((s) => s.time === "18:30")).toBeUndefined();
     });
 
     it("deve ordenar slots por data e hora", () => {

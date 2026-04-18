@@ -194,8 +194,7 @@ const generateAvailableSlots = (
 const filterSlotsByServiceDuration = (
   slots: AvailableSlot[],
   service: Service,
-  bookedSlots: { date: string; time: string }[],
-  enabledDays: DaySchedule[]
+  bookedSlots: { date: string; time: string }[]
 ): AvailableSlot[] => {
   if (!service.duration) {
     return slots;
@@ -232,17 +231,6 @@ const filterSlotsByServiceDuration = (
     const slotDate = new Date(slot.dateTime);
     const serviceEnd = new Date(slotDate);
     serviceEnd.setMinutes(serviceEnd.getMinutes() + durationMinutes);
-
-    const dayName = getDayName(slotDate);
-    const daySchedule = enabledDays.find((day) => day.day === dayName);
-    if (daySchedule) {
-      const [endHour, endMin] = daySchedule.end.split(":").map(Number);
-      const dayEnd = new Date(slotDate);
-      dayEnd.setHours(endHour, endMin, 0, 0);
-      if (serviceEnd.getTime() > dayEnd.getTime()) {
-        return false;
-      }
-    }
 
     const currentSlot = new Date(slotDate);
     const slotDuration = 30;
@@ -284,7 +272,7 @@ export const processAvailability = (
   
   slots = removeBookedAppointments(slots, bookedSlots);
   
-  slots = filterSlotsByServiceDuration(slots, service, bookedSlots, enabledDays);
+  slots = filterSlotsByServiceDuration(slots, service, bookedSlots);
   
   slots.sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
