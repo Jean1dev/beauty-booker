@@ -11,6 +11,9 @@ export interface UserPreferences {
   userLink?: string;
   theme?: ThemeColors;
   logoUrl?: string;
+  displayName?: string;
+  serviceCategory?: string;
+  isPublicProfile?: boolean;
   [key: string]: any;
 }
 

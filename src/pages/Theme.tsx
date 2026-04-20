@@ -1,14 +1,31 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, Upload, X, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Palette, Upload, X, Image as ImageIcon, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { trackThemeChanged } from "@/lib/analytics";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/use-auth";
 import { getUserPreferences, saveUserPreferences } from "@/services/user-preferences";
 import { uploadLogo, deleteLogo } from "@/services/storage";
+
+const SERVICE_CATEGORIES = [
+  "Make Profissional",
+  "Manicure",
+  "Pedicure",
+  "Tatuagem",
+  "Sobrancelhas",
+  "Cílios",
+  "Cabelo",
+  "Estética",
+  "Depilação",
+  "Massagem",
+  "Barbearia",
+  "Outros",
+];
 
 const Theme = () => {
   const navigate = useNavigate();
@@ -18,6 +35,9 @@ const Theme = () => {
   const [accentColor, setAccentColor] = useState(theme.accent);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [serviceCategory, setServiceCategory] = useState("");
+  const [isPublicProfile, setIsPublicProfile] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -26,20 +46,31 @@ const Theme = () => {
   }, [theme]);
 
   useEffect(() => {
-    const loadLogo = async () => {
+    const loadPreferences = async () => {
       if (userData?.uid) {
         try {
           const preferences = await getUserPreferences(userData.uid);
           if (preferences?.logoUrl) setLogoUrl(preferences.logoUrl);
+          if (preferences?.displayName) setDisplayName(preferences.displayName);
+          if (preferences?.serviceCategory) setServiceCategory(preferences.serviceCategory);
+          if (preferences?.isPublicProfile !== undefined) setIsPublicProfile(preferences.isPublicProfile);
         } catch {}
       }
     };
-    loadLogo();
+    loadPreferences();
   }, [userData?.uid]);
 
   const handleSave = async () => {
     try {
       await updateTheme({ primary: primaryColor, accent: accentColor });
+      if (userData?.uid) {
+        await saveUserPreferences({
+          userId: userData.uid,
+          displayName,
+          serviceCategory,
+          isPublicProfile,
+        });
+      }
       trackThemeChanged("custom");
       toast.success("Tema personalizado salvo!");
     } catch {
@@ -123,6 +154,57 @@ const Theme = () => {
           <div>
             <h1 className="page-title">Personalização</h1>
             <p className="page-subtitle">Customize cores e logo do seu sistema</p>
+          </div>
+        </div>
+
+        {/* Profile Info */}
+        <div className="bg-card rounded-[20px] border border-border shadow-soft overflow-hidden">
+          <div className="px-6 py-5 border-b border-border flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            <h2 className="font-medium text-foreground text-sm">Informações do Perfil</h2>
+          </div>
+          <div className="p-6 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
+                Nome de Exibição
+              </Label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Ex: Studio da Ana"
+                className="w-full px-4 py-2 bg-secondary/50 rounded-xl border border-border text-sm focus:outline-none focus:border-primary/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
+                Categoria dos Serviços
+              </Label>
+              <Select value={serviceCategory} onValueChange={setServiceCategory}>
+                <SelectTrigger className="w-full bg-secondary/50 rounded-xl border-border text-sm">
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div>
+                <p className="text-sm font-medium text-foreground">Perfil Público</p>
+                <p className="text-xs text-muted-foreground">Permite que clientes encontrem e acessem seu perfil</p>
+              </div>
+              <Switch
+                checked={isPublicProfile}
+                onCheckedChange={setIsPublicProfile}
+              />
+            </div>
           </div>
         </div>
 
