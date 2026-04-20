@@ -4,7 +4,6 @@ import { ArrowLeft, Palette, Upload, X, Image as ImageIcon, User } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { trackThemeChanged } from "@/lib/analytics";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -36,7 +35,7 @@ const Theme = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [displayName, setDisplayName] = useState("");
-  const [serviceCategory, setServiceCategory] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isPublicProfile, setIsPublicProfile] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +51,7 @@ const Theme = () => {
           const preferences = await getUserPreferences(userData.uid);
           if (preferences?.logoUrl) setLogoUrl(preferences.logoUrl);
           if (preferences?.displayName) setDisplayName(preferences.displayName);
-          if (preferences?.serviceCategory) setServiceCategory(preferences.serviceCategory);
+          if (preferences?.serviceCategory) setSelectedCategories(preferences.serviceCategory.split(",").map((s: string) => s.trim()).filter(Boolean));
           if (preferences?.isPublicProfile !== undefined) setIsPublicProfile(preferences.isPublicProfile);
         } catch {}
       }
@@ -67,7 +66,7 @@ const Theme = () => {
         await saveUserPreferences({
           userId: userData.uid,
           displayName,
-          serviceCategory,
+          serviceCategory: selectedCategories.join(", "),
           isPublicProfile,
         });
       }
@@ -181,18 +180,29 @@ const Theme = () => {
               <Label className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
                 Categoria dos Serviços
               </Label>
-              <Select value={serviceCategory} onValueChange={setServiceCategory}>
-                <SelectTrigger className="w-full bg-secondary/50 rounded-xl border-border text-sm">
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SERVICE_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_CATEGORIES.map((cat) => {
+                  const active = selectedCategories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() =>
+                        setSelectedCategories((prev) =>
+                          active ? prev.filter((c) => c !== cat) : [...prev, cat]
+                        )
+                      }
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
                       {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center justify-between py-1">
