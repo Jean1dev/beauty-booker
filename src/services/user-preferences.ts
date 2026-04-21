@@ -11,6 +11,9 @@ export interface UserPreferences {
   userLink?: string;
   theme?: ThemeColors;
   logoUrl?: string;
+  displayName?: string;
+  serviceCategory?: string;
+  isPublicProfile?: boolean;
   [key: string]: any;
 }
 
@@ -37,8 +40,10 @@ export const saveUserPreferences = async (preferences: UserPreferences): Promise
     const docRef = doc(db, COLLECTION_NAME, preferences.userId);
     const dataToSave: any = { ...preferences };
     
-    if (dataToSave.logoUrl === null || dataToSave.logoUrl === undefined) {
+    if (dataToSave.logoUrl === null) {
       dataToSave.logoUrl = deleteField();
+    } else if (dataToSave.logoUrl === undefined) {
+      delete dataToSave.logoUrl;
     }
     
     await setDoc(docRef, dataToSave, { merge: true });
