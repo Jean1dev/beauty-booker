@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Sparkles, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -20,8 +20,9 @@ import { getExcludedDays } from "@/services/excluded-days";
 
 const BookingPublic = () => {
   const { userLink } = useParams<{ userLink: string }>();
+  const [searchParams] = useSearchParams();
   const { services, availability, userId, logoUrl, bookedSlots, isLoading, error } = useBookingData({ userLink: userLink || null });
-  
+
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
@@ -30,7 +31,7 @@ const BookingPublic = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    phone: "",
+    phone: searchParams.get("phoneNumber") || "",
     notes: "",
   });
   const [excludedDays, setExcludedDays] = useState<string[]>([]);
