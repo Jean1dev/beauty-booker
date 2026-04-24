@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, Upload, X, Image as ImageIcon, User } from "lucide-react";
+import { ArrowLeft, Palette, Upload, X, Image as ImageIcon, User, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +26,8 @@ const SERVICE_CATEGORIES = [
   "Outros",
 ];
 
+type SaveStatus = "idle" | "saving" | "saved";
+
 const Theme = () => {
   const navigate = useNavigate();
   const { theme, updateTheme } = useTheme();
@@ -37,11 +39,21 @@ const Theme = () => {
   const [displayName, setDisplayName] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isPublicProfile, setIsPublicProfile] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const displayNameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const colorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs to always have latest color values inside debounced callbacks
+  const primaryColorRef = useRef(primaryColor);
+  const accentColorRef = useRef(accentColor);
 
   useEffect(() => {
     setPrimaryColor(theme.primary);
     setAccentColor(theme.accent);
+    primaryColorRef.current = theme.primary;
+    accentColorRef.current = theme.accent;
   }, [theme]);
 
   useEffect(() => {
@@ -51,30 +63,102 @@ const Theme = () => {
           const preferences = await getUserPreferences(userData.uid);
           if (preferences?.logoUrl) setLogoUrl(preferences.logoUrl);
           if (preferences?.displayName) setDisplayName(preferences.displayName);
-          if (preferences?.serviceCategory) setSelectedCategories(preferences.serviceCategory.split(",").map((s: string) => s.trim()).filter(Boolean));
-          if (preferences?.isPublicProfile !== undefined) setIsPublicProfile(preferences.isPublicProfile);
+          if (preferences?.serviceCategory)
+            setSelectedCategories(
+              preferences.serviceCategory
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            );
+          if (preferences?.isPublicProfile !== undefined)
+            setIsPublicProfile(preferences.isPublicProfile);
         } catch {}
       }
     };
     loadPreferences();
   }, [userData?.uid]);
 
-  const handleSave = async () => {
+  const markSaved = () => {
+    setSaveStatus("saved");
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+  };
+
+  // Saves profile data immediately using explicitly passed values to avoid stale closures
+  const saveProfileData = async (overrides: {
+    displayName?: string;
+    selectedCategories?: string[];
+    isPublicProfile?: boolean;
+  }) => {
+    if (!userData?.uid) return;
+    setSaveStatus("saving");
     try {
-      await updateTheme({ primary: primaryColor, accent: accentColor });
-      if (userData?.uid) {
-        await saveUserPreferences({
-          userId: userData.uid,
-          displayName,
-          serviceCategory: selectedCategories.join(", "),
-          isPublicProfile,
-        });
-      }
-      trackThemeChanged("custom");
-      toast.success("Tema personalizado salvo!");
+      await saveUserPreferences({
+        userId: userData.uid,
+        displayName: "displayName" in overrides ? overrides.displayName! : displayName,
+        serviceCategory: (
+          "selectedCategories" in overrides ? overrides.selectedCategories! : selectedCategories
+        ).join(", "),
+        isPublicProfile:
+          "isPublicProfile" in overrides ? overrides.isPublicProfile! : isPublicProfile,
+      });
+      markSaved();
     } catch {
-      toast.error("Erro ao salvar tema");
+      setSaveStatus("idle");
+      toast.error("Erro ao salvar");
     }
+  };
+
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value);
+    setSaveStatus("saving");
+    if (displayNameDebounceRef.current) clearTimeout(displayNameDebounceRef.current);
+    displayNameDebounceRef.current = setTimeout(() => {
+      saveProfileData({ displayName: value });
+    }, 700);
+  };
+
+  const handleCategoryToggle = (cat: string) => {
+    const newCategories = selectedCategories.includes(cat)
+      ? selectedCategories.filter((c) => c !== cat)
+      : [...selectedCategories, cat];
+    setSelectedCategories(newCategories);
+    saveProfileData({ selectedCategories: newCategories });
+  };
+
+  const handlePublicProfileChange = (value: boolean) => {
+    setIsPublicProfile(value);
+    saveProfileData({ isPublicProfile: value });
+  };
+
+  const scheduleColorSave = () => {
+    setSaveStatus("saving");
+    if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+    colorDebounceRef.current = setTimeout(async () => {
+      try {
+        await updateTheme({
+          primary: primaryColorRef.current,
+          accent: accentColorRef.current,
+        });
+        trackThemeChanged("custom");
+        markSaved();
+      } catch {
+        setSaveStatus("idle");
+        toast.error("Erro ao salvar tema");
+      }
+    }, 700);
+  };
+
+  const handlePrimaryColorChange = (value: string) => {
+    setPrimaryColor(value);
+    primaryColorRef.current = value;
+    scheduleColorSave();
+  };
+
+  const handleAccentColorChange = (value: string) => {
+    setAccentColor(value);
+    accentColorRef.current = value;
+    scheduleColorSave();
   };
 
   const presetThemes = [
@@ -84,14 +168,18 @@ const Theme = () => {
     { name: "Esmeralda", primary: "#6EE7B7", accent: "#FDE68A" },
   ];
 
-  const applyPreset = async (preset: typeof presetThemes[0]) => {
+  const applyPreset = async (preset: (typeof presetThemes)[0]) => {
     setPrimaryColor(preset.primary);
     setAccentColor(preset.accent);
+    primaryColorRef.current = preset.primary;
+    accentColorRef.current = preset.accent;
+    setSaveStatus("saving");
     try {
       await updateTheme({ primary: preset.primary, accent: preset.accent });
       trackThemeChanged("preset");
-      toast.success("Tema aplicado com sucesso!");
+      markSaved();
     } catch {
+      setSaveStatus("idle");
       toast.error("Erro ao aplicar tema");
     }
   };
@@ -150,9 +238,23 @@ const Theme = () => {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="page-title">Personalização</h1>
             <p className="page-subtitle">Customize cores e logo do seu sistema</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-[80px] justify-end">
+            {saveStatus === "saving" && (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            )}
+            {saveStatus === "saved" && (
+              <>
+                <Check className="w-3 h-3 text-green-500" />
+                <span className="text-green-500">Salvo</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -170,7 +272,7 @@ const Theme = () => {
               <input
                 type="text"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => handleDisplayNameChange(e.target.value)}
                 placeholder="Ex: Studio da Ana"
                 className="w-full px-4 py-2 bg-secondary/50 rounded-xl border border-border text-sm focus:outline-none focus:border-primary/50"
               />
@@ -187,11 +289,7 @@ const Theme = () => {
                     <button
                       key={cat}
                       type="button"
-                      onClick={() =>
-                        setSelectedCategories((prev) =>
-                          active ? prev.filter((c) => c !== cat) : [...prev, cat]
-                        )
-                      }
+                      onClick={() => handleCategoryToggle(cat)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                         active
                           ? "bg-primary text-primary-foreground border-primary"
@@ -208,12 +306,11 @@ const Theme = () => {
             <div className="flex items-center justify-between py-1">
               <div>
                 <p className="text-sm font-medium text-foreground">Perfil Público</p>
-                <p className="text-xs text-muted-foreground">Permite que clientes encontrem e acessem seu perfil</p>
+                <p className="text-xs text-muted-foreground">
+                  Permite que clientes encontrem e acessem seu perfil
+                </p>
               </div>
-              <Switch
-                checked={isPublicProfile}
-                onCheckedChange={setIsPublicProfile}
-              />
+              <Switch checked={isPublicProfile} onCheckedChange={handlePublicProfileChange} />
             </div>
           </div>
         </div>
@@ -261,7 +358,12 @@ const Theme = () => {
               >
                 <ImageIcon className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground mb-3">Nenhum logo enviado</p>
-                <Button variant="outline" size="sm" disabled={isUploadingLogo} className="pointer-events-none">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingLogo}
+                  className="pointer-events-none"
+                >
                   <Upload className="w-3.5 h-3.5" />
                   {isUploadingLogo ? "Enviando..." : "Enviar Logo"}
                 </Button>
@@ -328,13 +430,13 @@ const Theme = () => {
                   <input
                     type="color"
                     value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    onChange={(e) => handlePrimaryColorChange(e.target.value)}
                     className="w-14 h-10 rounded-xl cursor-pointer border border-border p-0.5"
                   />
                   <input
                     type="text"
                     value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    onChange={(e) => handlePrimaryColorChange(e.target.value)}
                     className="flex-1 px-4 py-2 bg-secondary/50 rounded-xl border border-border text-sm focus:outline-none focus:border-primary/50"
                   />
                 </div>
@@ -348,13 +450,13 @@ const Theme = () => {
                   <input
                     type="color"
                     value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
+                    onChange={(e) => handleAccentColorChange(e.target.value)}
                     className="w-14 h-10 rounded-xl cursor-pointer border border-border p-0.5"
                   />
                   <input
                     type="text"
                     value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
+                    onChange={(e) => handleAccentColorChange(e.target.value)}
                     className="flex-1 px-4 py-2 bg-secondary/50 rounded-xl border border-border text-sm focus:outline-none focus:border-primary/50"
                   />
                 </div>
@@ -386,17 +488,8 @@ const Theme = () => {
               </div>
             </div>
 
-            <Button
-              onClick={handleSave}
-              size="lg"
-              className="w-full text-white"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Salvar Tema
-            </Button>
-
             <p className="text-xs text-center text-muted-foreground">
-              As alterações de tema são salvas e aplicadas a todos os dispositivos
+              As alterações são salvas automaticamente em todos os dispositivos
             </p>
           </div>
         </div>
