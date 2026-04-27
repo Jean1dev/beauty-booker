@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Service } from "@/services/user-services";
@@ -29,6 +30,16 @@ export const DateTimeSelectionStep = ({
   onTimeSelect,
   onBack,
 }: DateTimeSelectionStepProps) => {
+  const timeSlotsRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (selectedDate && timeSlotsRef.current) {
+      setTimeout(() => {
+        timeSlotsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  }, [selectedDate]);
+
   return (
     <div className="bg-card rounded-[20px] border border-border shadow-soft overflow-hidden animate-slide-up">
       <div className="px-6 py-5 border-b border-border">
@@ -74,7 +85,7 @@ export const DateTimeSelectionStep = ({
 
         {/* Time selection */}
         {selectedDate && availableTimesForDate.length > 0 && (
-          <div className="space-y-3 animate-slide-up">
+          <div ref={timeSlotsRef} className="space-y-3 animate-slide-up">
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Horário disponível
             </p>
@@ -97,7 +108,7 @@ export const DateTimeSelectionStep = ({
         )}
 
         {selectedDate && availableTimesForDate.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-4">
+          <p ref={timeSlotsRef} className="text-center text-sm text-muted-foreground py-4">
             Nenhum horário disponível para esta data
           </p>
         )}
