@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, Upload, X, Image as ImageIcon, User, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Palette, Upload, X, Image as ImageIcon, User, Check, Loader2, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -39,7 +39,9 @@ const Theme = () => {
   const [displayName, setDisplayName] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isPublicProfile, setIsPublicProfile] = useState(true);
+  const [instagram, setInstagram] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const instagramDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const displayNameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +74,7 @@ const Theme = () => {
             );
           if (preferences?.isPublicProfile !== undefined)
             setIsPublicProfile(preferences.isPublicProfile);
+          if (preferences?.instagram) setInstagram(preferences.instagram);
         } catch {}
       }
     };
@@ -89,6 +92,7 @@ const Theme = () => {
     displayName?: string;
     selectedCategories?: string[];
     isPublicProfile?: boolean;
+    instagram?: string;
   }) => {
     if (!userData?.uid) return;
     setSaveStatus("saving");
@@ -101,6 +105,7 @@ const Theme = () => {
         ).join(", "),
         isPublicProfile:
           "isPublicProfile" in overrides ? overrides.isPublicProfile! : isPublicProfile,
+        instagram: "instagram" in overrides ? overrides.instagram! : instagram,
       });
       markSaved();
     } catch {
@@ -129,6 +134,16 @@ const Theme = () => {
   const handlePublicProfileChange = (value: boolean) => {
     setIsPublicProfile(value);
     saveProfileData({ isPublicProfile: value });
+  };
+
+  const handleInstagramChange = (value: string) => {
+    const username = value.replace(/^@/, "").trim();
+    setInstagram(username);
+    setSaveStatus("saving");
+    if (instagramDebounceRef.current) clearTimeout(instagramDebounceRef.current);
+    instagramDebounceRef.current = setTimeout(() => {
+      saveProfileData({ instagram: username });
+    }, 700);
   };
 
   const scheduleColorSave = () => {
@@ -276,6 +291,25 @@ const Theme = () => {
                 placeholder="Ex: Studio da Ana"
                 className="w-full px-4 py-2 bg-secondary/50 rounded-xl border border-border text-sm focus:outline-none focus:border-primary/50"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
+                Instagram
+              </Label>
+              <div className="relative">
+                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={instagram}
+                  onChange={(e) => handleInstagramChange(e.target.value)}
+                  placeholder="seuperfil"
+                  className="w-full pl-9 pr-4 py-2 bg-secondary/50 rounded-xl border border-border text-sm focus:outline-none focus:border-primary/50"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Seus últimos posts serão exibidos automaticamente toda segunda-feira
+              </p>
             </div>
 
             <div className="space-y-2">

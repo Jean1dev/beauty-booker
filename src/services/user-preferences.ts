@@ -14,6 +14,7 @@ export interface UserPreferences {
   displayName?: string;
   serviceCategory?: string;
   isPublicProfile?: boolean;
+  instagram?: string;
   [key: string]: any;
 }
 

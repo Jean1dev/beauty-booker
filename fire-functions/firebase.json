@@ -18,6 +18,11 @@
         "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
+    },
+    {
+      "source": "python-functions",
+      "codebase": "python",
+      "runtime": "python312"
     }
   ]
 }
