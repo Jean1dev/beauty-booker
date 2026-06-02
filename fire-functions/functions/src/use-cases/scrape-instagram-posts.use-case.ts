@@ -107,6 +107,11 @@ export class ScrapeInstagramPostsUseCase {
       const username = (data.instagram ?? "").trim();
 
       if (!username) {
+        const existingDoc = await db.collection("instagram_posts").doc(userId).get();
+        if (existingDoc.exists) {
+          await db.collection("instagram_posts").doc(userId).delete();
+          logger.info(`Deleted stale instagram_posts document for user ${userId}`);
+        }
         skipped++;
         continue;
       }
