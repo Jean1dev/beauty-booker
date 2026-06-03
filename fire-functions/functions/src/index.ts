@@ -23,6 +23,8 @@ import {CancelAppointmentUseCase} from
   "./use-cases/cancel-appointment.use-case";
 import {SendAppointmentReminderUseCase} from
   "./use-cases/send-appointment-reminder.use-case";
+import {ScrapeInstagramPostsUseCase} from
+  "./use-cases/scrape-instagram-posts.use-case";
 import {
   CreateCalendarEventRequest,
   AppointmentData,
@@ -185,6 +187,20 @@ export const sendAppointmentReminder = onSchedule(
       await SendAppointmentReminderUseCase.execute();
     } catch (error: unknown) {
       logger.error("Erro ao enviar lembretes de agendamento:", error);
+    }
+  }
+);
+
+export const scrapeInstagramPosts = onSchedule(
+  {
+    schedule: "0 8 * * 1",
+    timeZone: "America/Sao_Paulo",
+  },
+  async () => {
+    try {
+      await ScrapeInstagramPostsUseCase.execute();
+    } catch (error: unknown) {
+      logger.error("Erro ao fazer scrape do Instagram:", error);
     }
   }
 );
