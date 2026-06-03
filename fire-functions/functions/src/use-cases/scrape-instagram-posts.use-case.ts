@@ -27,6 +27,16 @@ interface GraphQLPost {
   };
 }
 
+interface InstagramProfileResponse {
+  graphql?: {
+    user?: {
+      edge_owner_to_timeline_media?: {
+        edges?: GraphQLPost[];
+      };
+    };
+  };
+}
+
 function fetchJson(url: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const req = https.get(
@@ -36,12 +46,14 @@ function fetchJson(url: string): Promise<unknown> {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          Accept: "application/json",
+          "Accept": "application/json",
         },
       },
       (res) => {
         let data = "";
-        res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+        res.on("data", (chunk: Buffer) => {
+          data += chunk.toString();
+        });
         res.on("end", () => {
           try {
             resolve(JSON.parse(data));
@@ -69,18 +81,21 @@ async function fetchLatestPosts(username: string, count = 3): Promise<InstagramP
   }
 
   const edges: GraphQLPost[] =
-    (json as any)
+    (json as InstagramProfileResponse)
       ?.graphql
       ?.user
       ?.edge_owner_to_timeline_media
       ?.edges ?? [];
 
   if (!Array.isArray(edges) || edges.length === 0) {
-    logger.warn(`No posts found for @${username} (profile may be private or Instagram blocked the request)`);
+    logger.warn(
+      `No posts found for @${username} ` +
+      "(profile may be private or Instagram blocked the request)"
+    );
     return [];
   }
 
-  return edges.slice(0, count).map(({ node }) => ({
+  return edges.slice(0, count).map(({node}) => ({
     shortcode: node.shortcode,
     url: `https://www.instagram.com/p/${node.shortcode}/`,
     caption: (node.edge_media_to_caption?.edges?.[0]?.node?.text ?? "").slice(0, 500),
@@ -103,6 +118,7 @@ export class ScrapeInstagramPostsUseCase {
     let errors = 0;
 
     for (const doc of snapshot.docs) {
+      const userId = doc.id;
       const data = doc.data() as UserPreference;
       const username = (data.instagram ?? "").trim();
 
@@ -115,8 +131,6 @@ export class ScrapeInstagramPostsUseCase {
         skipped++;
         continue;
       }
-
-      const userId = doc.id;
       logger.info(`Scraping Instagram for user ${userId} (@${username})`);
 
       try {
