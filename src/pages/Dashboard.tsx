@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles, Copy, XCircle } from "lucide-react";
+import { Calendar, Clock, Palette, Link as LinkIcon, LogOut, Sparkles, Copy, XCircle, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserLink } from "@/hooks/use-user-link";
@@ -93,6 +93,12 @@ const Dashboard = () => {
       description: "Visualize e gerencie seus agendamentos",
       icon: Calendar,
       path: "/appointments",
+    },
+    {
+      title: "Relatórios",
+      description: "Acompanhe métricas e o desempenho do seu negócio",
+      icon: BarChart3,
+      path: "/reports",
     },
     {
       title: "Personalização",

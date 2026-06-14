@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Appointment, cancelAppointment } from "@/services/appointments";
+import { Appointment, cancelAppointment, updateAppointmentStatus } from "@/services/appointments";
 import {
   Sheet,
   SheetContent,
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, User, Phone, FileText, Calendar, Sparkles, X } from "lucide-react";
+import { Clock, User, Phone, FileText, Calendar, Sparkles, X, Check, UserX } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,6 +43,7 @@ export const AppointmentDetailsSheet = ({
 }: AppointmentDetailsSheetProps) => {
   const { toast } = useToast();
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isSafariMobile, setIsSafariMobile] = useState(false);
 
@@ -95,7 +96,39 @@ export const AppointmentDetailsSheet = ({
     }
   };
 
-  const canCancel = appointment.status !== "cancelled" && appointment.status !== "completed";
+  const handleStatusChange = async (status: Appointment["status"], successMessage: string) => {
+    if (!appointment.id) return;
+
+    try {
+      setIsUpdatingStatus(true);
+      await updateAppointmentStatus(appointment.id, status);
+      toast({
+        title: successMessage,
+        description: "O status do agendamento foi atualizado.",
+      });
+      onOpenChange(false);
+      if (onAppointmentCancelled) {
+        onAppointmentCancelled();
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o agendamento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const isTerminalStatus =
+    appointment.status === "cancelled" ||
+    appointment.status === "completed" ||
+    appointment.status === "no_show";
+  const canCancel = !isTerminalStatus;
+  const isPast = appointmentDate.getTime() < Date.now();
+  // Baixa de comparecimento só faz sentido depois do horário e antes de um status terminal
+  const canMarkAttendance = isPast && !isTerminalStatus;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -107,6 +140,8 @@ export const AppointmentDetailsSheet = ({
         return <Badge className="bg-blue-500">Concluído</Badge>;
       case "cancelled":
         return <Badge variant="destructive">Cancelado</Badge>;
+      case "no_show":
+        return <Badge className="bg-orange-500">Não compareceu</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -247,6 +282,35 @@ export const AppointmentDetailsSheet = ({
               </>
             )}
           </div>
+
+          {canMarkAttendance && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Registrar comparecimento</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full border-blue-500/40 text-blue-600 hover:bg-blue-500/5 hover:text-blue-700"
+                    disabled={isUpdatingStatus}
+                    onClick={() => handleStatusChange("completed", "Atendimento concluído")}
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Compareceu
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-orange-500/40 text-orange-600 hover:bg-orange-500/5 hover:text-orange-700"
+                    disabled={isUpdatingStatus}
+                    onClick={() => handleStatusChange("no_show", "Falta registrada")}
+                  >
+                    <UserX className="w-4 h-4 mr-2" />
+                    Não compareceu
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
 
           {canCancel && (
             <>

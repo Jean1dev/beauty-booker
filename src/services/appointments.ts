@@ -17,7 +17,7 @@ export interface Appointment {
   dateTime: Timestamp;
   duration?: number;
   durationUnit?: "min" | "hour";
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status: "pending" | "confirmed" | "cancelled" | "completed" | "no_show";
   googleCalendarEventId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -172,6 +172,22 @@ export const getBookedSlots = async (
   } catch (error) {
     console.error("Erro ao buscar slots ocupados:", error);
     return [];
+  }
+};
+
+export const updateAppointmentStatus = async (
+  appointmentId: string,
+  status: Appointment["status"]
+): Promise<void> => {
+  try {
+    const appointmentRef = doc(db, COLLECTION_NAME, appointmentId);
+    await updateDoc(appointmentRef, {
+      status,
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar status do agendamento:", error);
+    throw error;
   }
 };
 

@@ -13,6 +13,7 @@ import Services from "./pages/Services";
 import Availability from "./pages/Availability";
 import ExcludedDays from "./pages/ExcludedDays";
 import Appointments from "./pages/Appointments";
+import Reports from "./pages/Reports";
 import Theme from "./pages/Theme";
 import BookingPublic from "./pages/BookingPublic";
 import NotFound from "./pages/NotFound";
@@ -73,6 +74,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Appointments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             }
           />
