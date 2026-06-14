@@ -209,7 +209,7 @@ export const scrapeInstagramPosts = onSchedule(
 
 export const completePastAppointments = onSchedule(
   {
-    schedule: "0 * * * *",
+    schedule: "0 1 * * *",
     timeZone: "America/Sao_Paulo",
   },
   async () => {
