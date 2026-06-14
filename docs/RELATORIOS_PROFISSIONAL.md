@@ -21,6 +21,7 @@ agendamentos que já existem no sistema. A feature deve responder perguntas como
 | **Receita / faturamento** | **Fora desta versão.** Hoje não existe campo de preço em `user_services` nem em `appointments`. Relatórios focam em métricas **operacionais**. Receita fica como fase futura (ver §8). |
 | **Localização** | **Nova página dedicada `/reports`**, acessível por um card no Dashboard, seguindo o padrão das telas existentes. |
 | **Escopo** | **Completo**: KPIs + gráficos + retenção de clientes + top clientes + taxas de cancelamento/no-show + comparação entre períodos + exportação. |
+| **No-show** | **Incluído nesta versão.** Adiciona o status `no_show` ao agendamento, ação manual "Não compareceu" na Agenda e inferência de faltas em aberto no relatório (ver §3.5 e Fase 0 em §7). |
 
 ## 2. Contexto técnico (estado atual)
 
@@ -45,7 +46,7 @@ interface Appointment {
   dateTime: Timestamp;        // ordenável / filtrável por período
   duration?: number;
   durationUnit?: "min" | "hour";
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status: "pending" | "confirmed" | "cancelled" | "completed" | "no_show"; // no_show adicionado nesta feature
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -53,9 +54,9 @@ interface Appointment {
 
 `user_services` (`src/services/user-services.ts`): `id, name, color, duration, durationUnit, advanceDays`.
 
-> **Importante**: não existe campo `noShow`. "Não compareceu" não é representável hoje
-> sem evolução do modelo (ver §8). Nesta versão tratamos os status existentes:
-> `completed`, `confirmed`, `pending`, `cancelled`.
+> **No-show**: o status `no_show` **não existe hoje** e será adicionado por esta feature
+> (sem migração — documentos antigos seguem válidos). A captura é manual na Agenda e o
+> relatório complementa com inferência de faltas em aberto. Detalhes em §3.5 e Fase 0 (§7).
 
 ### O que já existe e vamos reutilizar
 
@@ -74,7 +75,9 @@ interface Appointment {
 |-----|---------|------------|
 | Total de agendamentos | contagem no período | vs. período anterior (Δ%) |
 | Atendimentos concluídos | status `completed` | vs. período anterior |
+| Taxa de comparecimento | `completed / (completed + cancelled + no_show)` | vs. período anterior |
 | Taxa de cancelamento | `cancelled / total` | vs. período anterior |
+| Faltas (no-show) | status `no_show` | vs. período anterior |
 | Clientes únicos | `clientPhone` distintos | vs. período anterior |
 | Clientes recorrentes | clientes com ≥ 2 agendamentos no período | — |
 | Ticket de tempo (opcional) | soma de `duration` (horas agendadas) | vs. período anterior |
@@ -89,7 +92,7 @@ período anterior de mesma duração.
 2. **Serviços mais populares** — gráfico de barras horizontais, ordenado por contagem,
    usando a `color` de cada serviço.
 3. **Distribuição por status** — gráfico de pizza/donut (`completed`, `confirmed`,
-   `pending`, `cancelled`) com legenda.
+   `pending`, `cancelled`, `no_show`) com legenda.
 4. **Mapa de calor de horários** (opcional, fase 2 da implementação) — dias da semana × faixa de horário,
    para identificar os horários mais movimentados.
 
@@ -104,6 +107,33 @@ período anterior de mesma duração.
 - Seletor de período: **Últimos 7 dias / 30 dias / Este mês / Mês passado / Este ano / Personalizado**.
 - Período personalizado via date range picker.
 - Os cálculos de comparação usam o período imediatamente anterior de mesma duração.
+
+### 3.5 Tratamento de no-show (faltas)
+
+O problema: hoje o modelo não distingue "cliente não compareceu" de "agendamento que a
+profissional esqueceu de dar baixa". Resolvemos em três camadas:
+
+1. **Modelo** — novo status terminal `no_show` no agendamento. Sem migração: documentos
+   existentes continuam válidos; o status só é atribuído daqui para frente.
+
+2. **Captura manual (fonte de verdade)** — na Agenda, agendamentos passados ganham a ação
+   **"Não compareceu"**, ao lado de concluir/cancelar. A profissional, que conhece a
+   realidade do atendimento, faz a marcação. Esta é a base das métricas de no-show.
+
+3. **Inferência (apoio operacional)** — o relatório classifica como **"faltas em aberto"**
+   os agendamentos cuja `dateTime` já passou e que seguem em `pending`/`confirmed`
+   (nunca viraram `completed`/`cancelled`/`no_show`). É uma métrica **separada**, exibida
+   como alerta ("X atendimentos pendentes de baixa"), que **não** entra na contagem de
+   no-show confirmado — evita inflar a métrica e incentiva fechar o status na Agenda.
+
+Métricas resultantes no relatório:
+
+| Métrica | Definição |
+|---------|-----------|
+| Cancelamentos | status `cancelled` (cliente avisou) |
+| Faltas (no-show) | status `no_show` (cliente não avisou e não veio) |
+| Taxa de comparecimento | `completed / (completed + cancelled + no_show)` |
+| Faltas em aberto | inferido: passado e ainda `pending`/`confirmed` (alerta, não no-show) |
 
 ## 4. Arquitetura da implementação
 
@@ -123,7 +153,10 @@ export interface ReportMetrics {
   cancelled: number;
   pending: number;
   confirmed: number;
+  noShow: number;               // status no_show (falta confirmada)
+  openNoShow: number;           // inferido: passado e ainda pending/confirmed
   cancellationRate: number;     // 0..1
+  attendanceRate: number;       // completed / (completed + cancelled + no_show)
   uniqueClients: number;
   returningClients: number;
   totalScheduledMinutes: number;
@@ -254,7 +287,8 @@ download via Blob. Sem dependência nova.
 
 | Fase | Entrega | Arquivos |
 |------|---------|----------|
-| **1** | Camada de serviço + testes unitários das agregações | `services/reports.ts`, `*.test.ts` |
+| **0** | Status `no_show`: adicionar ao tipo `Appointment`; função/cloud function para atualizar status; ação "Não compareceu" (e badge correspondente) no `AppointmentDetailsSheet` | `services/appointments.ts`, `components/calendar/AppointmentDetailsSheet.tsx` |
+| **1** | Camada de serviço + testes unitários das agregações (inclui no-show e faltas em aberto) | `services/reports.ts`, `*.test.ts` |
 | **2** | Hook + página com KPIs e gráfico de tendência | `hooks/use-reports.tsx`, `pages/Reports.tsx`, rota, card no Dashboard |
 | **3** | Gráficos de serviços/status + tabelas (top clientes, resumo) | `components/reports/*` |
 | **4** | Filtros de período + comparação vs. período anterior | `PeriodSelector`, lógica de comparação |
@@ -268,8 +302,6 @@ Cada fase é commitável e revisável de forma independente.
   valor cobrado no `appointment` (snapshot no momento da reserva, para preservar
   histórico mesmo se o preço do serviço mudar). Habilita: faturamento por período,
   ticket médio, receita por serviço, projeção. **Recomendado como próxima feature.**
-- **No-show**: adicionar status/flag `noShow` ao agendamento (e ação na agenda para
-  marcá-lo) para distinguir de cancelamento. Necessário para taxa de comparecimento real.
 - **Entidade Cliente**: hoje o cliente é inferido por `clientPhone`. Uma coleção
   `clients` permitiria histórico, observações e métricas de retenção mais ricas (LTV, frequência média).
 - **Relatórios agendados por e-mail** (resumo semanal/mensal via Cloud Function).
@@ -286,6 +318,9 @@ Cada fase é commitável e revisável de forma independente.
 | Novo | `src/components/reports/{KpiCard,AppointmentsTrendChart,ServicePopularityChart,StatusDistributionChart,TopClientsTable,PeriodSelector}.tsx` |
 | Editar | `src/App.tsx` (rota `/reports`) |
 | Editar | `src/pages/Dashboard.tsx` (card "Relatórios") |
-| Reutilizar | `src/components/ui/chart.tsx`, `src/services/appointments.ts`, `src/services/user-services.ts` |
+| Editar | `src/services/appointments.ts` (status `no_show` + atualização de status) |
+| Editar | `src/components/calendar/AppointmentDetailsSheet.tsx` (ação "Não compareceu" + badge) |
+| Reutilizar | `src/components/ui/chart.tsx`, `src/services/user-services.ts` |
 
-**Sem novas dependências. Sem mudanças no modelo de dados nesta versão.**
+**Sem novas dependências.** Única mudança de modelo: novo valor de status `no_show`
+(aditivo, sem migração de dados).
