@@ -56,7 +56,10 @@ const Reports = () => {
   const [preset, setPreset] = useState<PeriodPreset>("30d");
   const [customPeriod, setCustomPeriod] = useState(buildPeriod("30d"));
 
-  const period = preset === "custom" ? customPeriod : buildPeriod(preset);
+  const period = useMemo(
+    () => (preset === "custom" ? customPeriod : buildPeriod(preset)),
+    [preset, customPeriod]
+  );
 
   const { data, isLoading, error } = useReports({
     userId: userData?.uid || null,
