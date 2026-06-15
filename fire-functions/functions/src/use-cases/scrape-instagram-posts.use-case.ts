@@ -37,6 +37,9 @@ interface InstagramProfileResponse {
   };
 }
 
+/** Thrown when Instagram blocks or rejects the request (expected, not a bug). */
+class InstagramBlockedError extends Error {}
+
 function fetchJson(url: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const req = https.get(
@@ -47,18 +50,43 @@ function fetchJson(url: string): Promise<unknown> {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept": "application/json",
+          "X-IG-App-ID": "936619743392459",
         },
       },
       (res) => {
+        const status = res.statusCode ?? 0;
+        const contentType = res.headers["content-type"] ?? "";
+
+        // A redirect (302 → login) or a non-2xx means Instagram blocked us.
+        if (status < 200 || status >= 300) {
+          res.resume(); // drain so the socket can be freed
+          reject(new InstagramBlockedError(
+            `Instagram returned HTTP ${status} (likely blocked / login redirect)`
+          ));
+          return;
+        }
+
         let data = "";
         res.on("data", (chunk: Buffer) => {
           data += chunk.toString();
         });
         res.on("end", () => {
+          if (!data.trim()) {
+            reject(new InstagramBlockedError("Instagram returned an empty response body"));
+            return;
+          }
+          if (!contentType.includes("json")) {
+            reject(new InstagramBlockedError(
+              `Instagram returned non-JSON (content-type: ${contentType})`
+            ));
+            return;
+          }
           try {
             resolve(JSON.parse(data));
           } catch {
-            reject(new Error(`Failed to parse JSON for response: ${data.slice(0, 200)}`));
+            reject(new InstagramBlockedError(
+              `Failed to parse JSON for response: ${data.slice(0, 200)}`
+            ));
           }
         });
       }
@@ -77,6 +105,13 @@ async function fetchLatestPosts(username: string, count = 3): Promise<InstagramP
   try {
     json = await fetchJson(url);
   } catch (err) {
+    // Instagram routinely blocks requests from cloud IPs. Treat it as
+    // "no posts available" instead of a hard error so the job stays green
+    // and previously scraped posts are kept.
+    if (err instanceof InstagramBlockedError) {
+      logger.warn(`Could not fetch @${username}: ${err.message}`);
+      return [];
+    }
     throw new Error(`Failed to fetch Instagram profile for @${username}: ${err}`);
   }
 
@@ -135,6 +170,13 @@ export class ScrapeInstagramPostsUseCase {
 
       try {
         const posts = await fetchLatestPosts(username, 3);
+
+        if (posts.length === 0) {
+          // Blocked or no posts — keep whatever was previously stored.
+          logger.info(`No posts to save for user ${userId} (@${username}); keeping existing data`);
+          skipped++;
+          continue;
+        }
 
         await db.collection("instagram_posts").doc(userId).set({
           userId,

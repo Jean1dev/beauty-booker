@@ -41,6 +41,28 @@ export class AppointmentRepository {
       });
   }
 
+  static async completeAppointment(appointmentId: string): Promise<void> {
+    await admin.firestore()
+      .collection(this.COLLECTION)
+      .doc(appointmentId)
+      .update({
+        status: "completed",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+  }
+
+  static async getActiveAppointmentsStartedBefore(
+    beforeInclusive: admin.firestore.Timestamp
+  ): Promise<(admin.firestore.DocumentData & { id: string })[]> {
+    const snapshot = await admin.firestore()
+      .collection(this.COLLECTION)
+      .where("status", "in", ["pending", "confirmed"])
+      .where("dateTime", "<=", beforeInclusive)
+      .get();
+
+    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+  }
+
   static async getAppointmentsBetween(
     startInclusive: admin.firestore.Timestamp,
     endInclusive: admin.firestore.Timestamp
