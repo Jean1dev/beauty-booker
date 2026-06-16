@@ -88,9 +88,12 @@ const getMinutes = (appt: Appointment): number => {
  */
 export const getPreviousPeriod = (period: ReportPeriod): ReportPeriod => {
   const durationMs = period.end.getTime() - period.start.getTime();
+  // -1ms no fim evita sobreposição: getAppointmentsByDateRange é inclusivo nas
+  // duas pontas, então um agendamento exatamente em period.start não pode cair
+  // no período atual e no anterior ao mesmo tempo.
   return {
     start: new Date(period.start.getTime() - durationMs),
-    end: new Date(period.start.getTime()),
+    end: new Date(period.start.getTime() - 1),
   };
 };
 

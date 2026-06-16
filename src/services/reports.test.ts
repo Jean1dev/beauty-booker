@@ -170,7 +170,8 @@ describe("getPreviousPeriod", () => {
   it("retorna período anterior de mesma duração", () => {
     const period = { start: new Date("2026-06-08T00:00:00"), end: new Date("2026-06-15T00:00:00") };
     const prev = getPreviousPeriod(period);
-    expect(prev.end).toEqual(period.start);
+    // fim do período anterior fica 1ms antes do início do atual (sem sobreposição)
+    expect(prev.end).toEqual(new Date(period.start.getTime() - 1));
     expect(prev.start).toEqual(new Date("2026-06-01T00:00:00"));
   });
 });
