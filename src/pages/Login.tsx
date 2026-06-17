@@ -1,6 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { CalendarCheck, Scissors, Share2 } from "lucide-react";
+
+const steps = [
+  {
+    icon: Scissors,
+    title: "Cadastre seus serviços",
+    description: "Defina o que você oferece, com duração e preço, em poucos minutos.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Configure sua agenda",
+    description: "Marque seus horários disponíveis e os dias em que não atende.",
+  },
+  {
+    icon: Share2,
+    title: "Compartilhe seu link",
+    description: "Envie seu link e receba agendamentos sem ficar trocando mensagens.",
+  },
+];
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,7 +35,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-background animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center px-6 py-12 bg-background animate-fade-in">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-10">
@@ -33,8 +52,8 @@ const Login = () => {
           <div className="text-center space-y-1">
             <h2 className="font-display text-2xl font-normal text-foreground">Bem-vindo(a)</h2>
             <p className="text-sm text-muted-foreground">
-              O BeautyBook é a plataforma que reúne profissionais da beleza e
-              simplifica os agendamentos, do primeiro contato à confirmação.
+              O BeautyBook organiza a sua agenda e deixa os seus clientes
+              marcarem horário sozinhos, direto pelo seu link.
             </p>
           </div>
 
@@ -69,6 +88,28 @@ const Login = () => {
           <p className="text-xs text-center text-muted-foreground">
             Ao continuar, você concorda com nossos Termos de Serviço
           </p>
+        </div>
+
+        {/* Como funciona */}
+        <div className="mt-10">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground text-center mb-6">
+            Como funciona
+          </p>
+          <ol className="space-y-4">
+            {steps.map((step) => (
+              <li key={step.title} className="flex items-start gap-4">
+                <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl bg-secondary text-primary">
+                  <step.icon className="w-[18px] h-[18px]" />
+                </span>
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-medium text-foreground">{step.title}</h3>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {step.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </div>
