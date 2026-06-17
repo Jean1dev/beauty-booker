@@ -33,7 +33,8 @@ const Login = () => {
           <div className="text-center space-y-1">
             <h2 className="font-display text-2xl font-normal text-foreground">Bem-vindo(a)</h2>
             <p className="text-sm text-muted-foreground">
-              Faça login para gerenciar seus agendamentos
+              O BeautyBook é a plataforma que reúne profissionais da beleza e
+              simplifica os agendamentos, do primeiro contato à confirmação.
             </p>
           </div>
 
