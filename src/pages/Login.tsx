@@ -30,8 +30,8 @@ const steps = [
   },
 ];
 
-// TODO: substituir pelas URLs reais das lojas quando os apps forem publicados.
-const APP_STORE_URL = "#";
+// TODO: substituir pela URL real da Google Play quando o app for publicado.
+const APP_STORE_URL = "https://apps.apple.com/br/app/beauty-book-clientes/id6763134395";
 const PLAY_STORE_URL = "#";
 
 const Login = () => {
@@ -145,6 +145,8 @@ const Login = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
               href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover-lift flex w-full sm:w-auto items-center justify-center gap-3 rounded-xl bg-foreground px-5 py-2.5 text-background"
             >
               <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
@@ -157,6 +159,8 @@ const Login = () => {
             </a>
             <a
               href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover-lift flex w-full sm:w-auto items-center justify-center gap-3 rounded-xl bg-foreground px-5 py-2.5 text-background"
             >
               <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
