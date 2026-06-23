@@ -28,7 +28,7 @@ interface GraphQLPost {
 }
 
 interface InstagramProfileResponse {
-  graphql?: {
+  data?: {
     user?: {
       edge_owner_to_timeline_media?: {
         edges?: GraphQLPost[];
@@ -99,7 +99,9 @@ function fetchJson(url: string): Promise<unknown> {
 }
 
 async function fetchLatestPosts(username: string, count = 3): Promise<InstagramPost[]> {
-  const url = `https://www.instagram.com/${username}/?__a=1&__d=dis`;
+  const url =
+    "https://i.instagram.com/api/v1/users/web_profile_info/" +
+    `?username=${encodeURIComponent(username)}`;
 
   let json: unknown;
   try {
@@ -117,7 +119,7 @@ async function fetchLatestPosts(username: string, count = 3): Promise<InstagramP
 
   const edges: GraphQLPost[] =
     (json as InstagramProfileResponse)
-      ?.graphql
+      ?.data
       ?.user
       ?.edge_owner_to_timeline_media
       ?.edges ?? [];
